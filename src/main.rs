@@ -1,11 +1,16 @@
 use std::fs::File;
-use std::io::{Read, Result};
-use std::path::Path;
+use std::io::Read;
 
 extern crate clap;
 use clap::{App, Arg};
 
 mod cart;
+mod cpu;
+mod emu;
+mod gb;
+mod reg;
+
+use emu::Emulator;
 
 fn main() {
     let matches = App::new("gameboy.rust")
@@ -18,14 +23,9 @@ fn main() {
         )
         .get_matches();
     if let Some(path) = matches.value_of("file_path") {
-        run(path).unwrap();
+        let mut file = File::open(path).unwrap();
+        let mut data = Vec::new();
+        file.read_to_end(&mut data).unwrap();
+        Emulator::new(data).run();
     }
-}
-
-fn run<P: AsRef<Path>>(path: P) -> Result<()> {
-    let mut file = File::open(path)?;
-    let mut data = Vec::new();
-    file.read_to_end(&mut data)?;
-    cart::load_cartridge(data);
-    Ok(())
 }

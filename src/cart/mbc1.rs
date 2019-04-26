@@ -1,6 +1,50 @@
 use crate::cart::lib;
 use crate::cart::Cartridge;
 
+#[derive(Debug)]
+struct ExternalRam {
+    ram: Vec<u8>,
+    ram_banks: u8,
+    bank_size: u16, // 2KB or 8KB
+}
+
+impl ExternalRam {
+    fn new(ram_banks: u8, bank_size: u16) -> Self {
+        let ram_size = u16::from(ram_banks) * bank_size;
+        Self {
+            ram: vec![0xff; usize::from(ram_size)],
+            ram_banks,
+            bank_size,
+        }
+    }
+
+    fn get_index(&self, offset: u16) -> usize {
+        usize::from(u16::from(self.ram_banks) * self.bank_size + offset)
+    }
+
+    fn write(&mut self, offset: u16, value: u8) {
+        let idx = self.get_index(offset);
+        self.ram[idx] = value;
+    }
+
+    fn read(&self, offset: u16) -> u8 {
+        let idx = self.get_index(offset);
+        if idx < self.ram.len() {
+            self.ram[usize::from(idx)]
+        } else {
+            0xff
+        }
+    }
+
+    fn get_address(&self, bank: u8, offset: u16) -> u16 {
+        self.bank_size * u16::from(bank) + offset
+    }
+
+    fn save(&self) {
+        unimplemented!("save external ram")
+    }
+}
+
 #[derive(Eq, PartialEq)]
 enum Mode {
     Rom,
@@ -8,28 +52,31 @@ enum Mode {
 }
 
 pub struct Mbc1 {
-    data: Vec<u8>,
+    cartridge: Vec<u8>,
     rom_banks: u16,
-    ram_banks: u8,
     selected_rom_bank: u16,
     selected_ram_bank: u8,
     mode: Mode,
-    enable_ram_write: bool,
+    ram_enabled: bool,
+    ext_ram: ExternalRam,
 }
 
 impl Mbc1 {
-    pub fn new(data: Vec<u8>) -> Self {
-        let rom_banks = lib::get_rom_banks(data[0x148]);
-        let ram_banks = lib::get_ram_banks(data[0x149]);
-        println!("rom_banks {}, ram_banks {}", rom_banks, ram_banks);
+    pub fn new(cartridge: Vec<u8>) -> Self {
+        let rom_banks = lib::get_rom_banks(cartridge[0x148]);
+        let (ram_banks, bank_size) = lib::get_ram_banks_with_bank_size(cartridge[0x149]);
+        println!(
+            "rom_banks {}, ram_banks {}, bank_size {}",
+            rom_banks, ram_banks, bank_size
+        );
         Self {
-            data,
+            cartridge,
             rom_banks,
-            ram_banks,
             selected_rom_bank: 1,
             selected_ram_bank: 0,
             mode: Mode::Rom,
-            enable_ram_write: true,
+            ram_enabled: true,
+            ext_ram: ExternalRam::new(ram_banks, bank_size),
         }
     }
 
@@ -53,24 +100,47 @@ impl Mbc1 {
         usize::from(if self.is_rom_mode() {
             address - 0xa000
         } else {
-            u16::from(self.selected_ram_bank % self.ram_banks) * 0x2000 + (address - 0xa000)
+            self.ext_ram
+                .get_address(self.selected_ram_bank, address - 0xa000)
         })
+    }
+
+    fn get_rom_byte(&self, bank: u16, address: u16) -> u8 {
+        let offset = usize::from(bank * 0x4000 + address);
+        if offset < self.cartridge.len() {
+            self.cartridge[offset]
+        } else {
+            0xff
+        }
     }
 }
 
 impl Cartridge for Mbc1 {
     fn read(&self, address: u16) -> u8 {
-        // TODO
-        0xff
+        match address {
+            0x0000...0x3fff => self.get_rom_byte(0, address),
+            0x4000...0x7fff => self.get_rom_byte(self.selected_rom_bank, address),
+            0xa000...0xbfff => {
+                if self.ram_enabled {
+                    self.ext_ram.read(address - 0xa000)
+                } else {
+                    0xff
+                }
+            }
+            _ => {
+                println!("invalid write address {}", address);
+                0xff
+            }
+        }
     }
 
     fn write(&mut self, address: u16, value: u8) {
         match address {
             // Enable RAM
             0x0000...0x1fff => {
-                self.enable_ram_write = (value & 0x0f) == 0x0a;
-                println!("RAM Enable {}", self.enable_ram_write);
-                if !self.enable_ram_write {
+                self.ram_enabled = (value & 0x0f) == 0x0a;
+                println!("RAM Enable {}", self.ram_enabled);
+                if !self.ram_enabled {
                     self.save_ram();
                 }
             }
@@ -93,6 +163,7 @@ impl Cartridge for Mbc1 {
                     self.select_ram_bank(value & 0b11);
                 }
             }
+            // Select Banking mode
             0x6000...0x7fff => {
                 self.mode = if value & 0x01 == 0 {
                     Mode::Rom
@@ -100,17 +171,13 @@ impl Cartridge for Mbc1 {
                     Mode::Ram
                 };
             }
+            // Switchable RAM bank
             0xa000...0xbfff => {
-                if self.enable_ram_write {
-                    let ram_address = self.get_ram_address(address);
-                    if ram_address < self.data.len() {
-                        self.data[ram_address] = value;
-                    }
+                if self.ram_enabled {
+                    self.ext_ram.write(address - 0xa000, value);
                 }
             }
-            _ => {
-                println!("invalid write address {}", address);
-            }
+            _ => println!("invalid write address {}", address),
         };
     }
 }

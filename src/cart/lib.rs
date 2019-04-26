@@ -13,13 +13,14 @@ pub fn get_rom_banks(hex: u8) -> u16 {
     }
 }
 
-pub fn get_ram_banks(hex: u8) -> u8 {
+pub fn get_ram_banks_with_bank_size(hex: u8) -> (u8, u16) {
     match hex {
-        0x00 => 0,
-        0x01 | 0x02 => 1,
-        0x03 => 4,
-        0x04 => 16,
-        0x05 => 8,
-        _ => 0,
+        0x00 => (0, 0),
+        0x01 => (1, 2048),
+        0x02 => (1, 0x2000),
+        0x03 => (4, 0x2000),
+        0x04 => (16, 0x2000),
+        0x05 => (8, 0x2000),
+        _ => (0, 0),
     }
 }

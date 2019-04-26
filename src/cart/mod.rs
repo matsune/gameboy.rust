@@ -1,7 +1,9 @@
 mod lib;
 mod mbc1;
+mod rom;
 
 use mbc1::Mbc1;
+use rom::RomOnly;
 
 #[derive(Debug)]
 pub enum CartridgeType {
@@ -64,6 +66,36 @@ impl CartridgeType {
             _ => false,
         }
     }
+
+    pub fn is_mbc2(&self) -> bool {
+        match self {
+            CartridgeType::Mbc2 | CartridgeType::Mbc2Battery => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_mbc3(&self) -> bool {
+        match self {
+            CartridgeType::Mbc3TimerBattery
+            | CartridgeType::Mbc3TimerRamBattery
+            | CartridgeType::Mbc3
+            | CartridgeType::Mbc3Ram
+            | CartridgeType::Mbc3RamBattery => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_mbc5(&self) -> bool {
+        match self {
+            CartridgeType::Mbc5
+            | CartridgeType::Mbc5Ram
+            | CartridgeType::Mbc5RamBattery
+            | CartridgeType::Mbc5Rumble
+            | CartridgeType::Mbc5RumbleSram
+            | CartridgeType::Mbc5RumbleSramBattery => true,
+            _ => false,
+        }
+    }
 }
 
 pub trait Cartridge {
@@ -71,11 +103,17 @@ pub trait Cartridge {
     fn write(&mut self, address: u16, value: u8);
 }
 
-pub fn load_cartridge(data: Vec<u8>) -> Box<Cartridge> {
-    let cart_type = CartridgeType::new(data[0x147]);
-    Box::new(if cart_type.is_mbc1() {
-        Mbc1::new(data)
+pub fn load_cartridge(memory: Vec<u8>) -> Box<Cartridge> {
+    let cart_type = CartridgeType::new(memory[0x147]);
+    if cart_type.is_mbc1() {
+        Box::new(Mbc1::new(memory))
+    } else if cart_type.is_mbc2() {
+        unimplemented!("mbc2");
+    } else if cart_type.is_mbc3() {
+        unimplemented!("mbc3");
+    } else if cart_type.is_mbc5() {
+        unimplemented!("mbc5");
     } else {
-        unimplemented!("cart type {:?}", cart_type);
-    })
+        Box::new(RomOnly::new(memory))
+    }
 }

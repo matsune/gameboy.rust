@@ -52,7 +52,7 @@ enum Mode {
 }
 
 pub struct Mbc1 {
-    cartridge: Vec<u8>,
+    memory: Vec<u8>,
     rom_banks: u16,
     selected_rom_bank: u16,
     selected_ram_bank: u8,
@@ -62,15 +62,15 @@ pub struct Mbc1 {
 }
 
 impl Mbc1 {
-    pub fn new(cartridge: Vec<u8>) -> Self {
-        let rom_banks = lib::get_rom_banks(cartridge[0x148]);
-        let (ram_banks, bank_size) = lib::get_ram_banks_with_bank_size(cartridge[0x149]);
+    pub fn new(memory: Vec<u8>) -> Self {
+        let rom_banks = lib::get_rom_banks(memory[0x148]);
+        let (ram_banks, bank_size) = lib::get_ram_banks_with_bank_size(memory[0x149]);
         println!(
             "rom_banks {}, ram_banks {}, bank_size {}",
             rom_banks, ram_banks, bank_size
         );
         Self {
-            cartridge,
+            memory,
             rom_banks,
             selected_rom_bank: 1,
             selected_ram_bank: 0,
@@ -107,8 +107,8 @@ impl Mbc1 {
 
     fn get_rom_byte(&self, bank: u16, address: u16) -> u8 {
         let offset = usize::from(bank * 0x4000 + address);
-        if offset < self.cartridge.len() {
-            self.cartridge[offset]
+        if offset < self.memory.len() {
+            self.memory[offset]
         } else {
             0xff
         }

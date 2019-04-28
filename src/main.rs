@@ -8,7 +8,9 @@ mod cart;
 mod cpu;
 mod emu;
 mod gb;
+mod mmu;
 mod reg;
+mod rom;
 
 use emu::Emulator;
 

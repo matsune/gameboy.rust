@@ -4,13 +4,13 @@ use std::io::Read;
 extern crate clap;
 use clap::{App, Arg};
 
-mod cart;
+mod cartridge;
 mod cpu;
 mod emu;
 mod gb;
+mod memory;
 mod mmu;
 mod reg;
-mod rom;
 
 use emu::Emulator;
 

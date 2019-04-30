@@ -1,5 +1,4 @@
-use crate::cart;
-use crate::cart::Cartridge;
+use crate::cartridge::Cartridge;
 use crate::gb::Gameboy;
 
 pub struct Emulator {
@@ -9,9 +8,11 @@ pub struct Emulator {
 impl Emulator {
     pub fn new(memory: Vec<u8>) -> Self {
         Self {
-            gameboy: Gameboy::new(cart::load_cartridge(memory)),
+            gameboy: Gameboy::new(Cartridge::new(memory)),
         }
     }
 
-    pub fn run(&self) {}
+    pub fn run(&mut self) {
+        self.gameboy.run();
+    }
 }

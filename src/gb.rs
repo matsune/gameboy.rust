@@ -1,4 +1,4 @@
-use crate::cart::Cartridge;
+use crate::cartridge::Cartridge;
 use crate::cpu::CPU;
 
 pub struct Gameboy {
@@ -6,13 +6,15 @@ pub struct Gameboy {
 }
 
 impl Gameboy {
-    pub fn new(cartridge: Box<Cartridge>) -> Self {
+    pub fn new(cartridge: Cartridge) -> Self {
         Self {
             cpu: CPU::new(cartridge),
         }
     }
 
-    pub fn power_on(&mut self) {
-        // self.cpu.init();
+    pub fn run(&mut self) {
+        loop {
+            self.cpu.run();
+        }
     }
 }

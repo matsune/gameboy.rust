@@ -18,7 +18,7 @@ fn set_bit(n: u8, pos: u8, b: bool) -> u8 {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct Registers {
     // Accumulator & Flags
     a: u8,
@@ -36,6 +36,27 @@ pub struct Registers {
     sp: u16,
     // Program Counter
     pc: u16,
+    // Interrupt Master Enable flag
+    ime: bool,
+}
+
+impl std::fmt::Debug for Registers {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "AF:0x{:x} BC:0x{:x} DE:0x{:x} HL:0x{:x} SP:0x{:x} PC:0x{:x} flag:{}{}{}{}",
+            self.get_af(),
+            self.get_bc(),
+            self.get_de(),
+            self.get_hl(),
+            self.get_sp(),
+            self.get_pc(),
+            if self.get_flag(Flag::Z) { "Z" } else { "-" },
+            if self.get_flag(Flag::N) { "N" } else { "-" },
+            if self.get_flag(Flag::H) { "H" } else { "-" },
+            if self.get_flag(Flag::C) { "C" } else { "-" },
+        )
+    }
 }
 
 impl Registers {
@@ -153,6 +174,14 @@ impl Registers {
 
     pub fn set_pc(&mut self, pc: u16) {
         self.pc = pc;
+    }
+
+    pub fn is_ime(&self) -> bool {
+        self.ime
+    }
+
+    pub fn set_ime(&mut self, enable: bool) {
+        self.ime = enable;
     }
 }
 

@@ -11,6 +11,7 @@ mod gb;
 mod memory;
 mod mmu;
 mod reg;
+mod util;
 
 use emu::Emulator;
 

@@ -15,3 +15,36 @@ pub trait Memory {
         self.write(address + 1, get_msb(value));
     }
 }
+
+// #[derive(Debug)]
+pub struct RAM {
+    pub memory: Vec<u8>,
+    offset: u16,
+    size: u16,
+}
+
+impl RAM {
+    pub fn new(offset: u16, size: u16) -> Self {
+        Self {
+            memory: vec![0; usize::from(size)],
+            offset: offset,
+            size: size,
+        }
+    }
+}
+
+impl Memory for RAM {
+    fn read(&self, address: u16) -> u8 {
+        self.memory[usize::from(address - self.offset)]
+    }
+
+    fn write(&mut self, address: u16, value: u8) {
+        self.memory[usize::from(address - self.offset)] = value;
+    }
+}
+
+impl std::fmt::Debug for RAM {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "RAM {{ offset: {}, size: {} }}", self.offset, self.size)
+    }
+}

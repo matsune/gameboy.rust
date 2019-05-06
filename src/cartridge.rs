@@ -119,10 +119,6 @@ impl Cartridge {
             dmg_bootstrap: false,
         }
     }
-
-    pub fn accepts(&self, address: u16) -> bool {
-        (address < 0x8000) || (address >= 0xa000 && address < 0xc000) || address == 0xff50
-    }
 }
 
 const BOOT_ROM: [u8; 256] = [
@@ -278,10 +274,6 @@ impl Mbc1 {
     pub fn new(memory: Vec<u8>) -> Self {
         let rom_banks = get_rom_banks(memory[0x148]);
         let (ram_banks, bank_size) = get_ram_banks_with_bank_size(memory[0x149]);
-        println!(
-            "rom_banks {}, ram_banks {}, bank_size {}",
-            rom_banks, ram_banks, bank_size
-        );
         Self {
             memory,
             rom_banks,
@@ -352,7 +344,6 @@ impl Memory for Mbc1 {
             // Enable RAM
             0x0000...0x1fff => {
                 self.ram_enabled = (value & 0x0f) == 0x0a;
-                println!("RAM Enable {}", self.ram_enabled);
                 if !self.ram_enabled {
                     self.save_ram();
                 }

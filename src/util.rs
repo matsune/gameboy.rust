@@ -7,10 +7,12 @@ pub fn get_lsb(n: u16) -> u8 {
 }
 
 pub fn is_bit_on(n: u8, pos: u8) -> bool {
+    assert!(pos < 8, "Bit out of bounds");
     (n & (1 << pos)) != 0
 }
 
 pub fn set_bit(n: u8, pos: u8, b: bool) -> u8 {
+    assert!(pos < 8, "Bit out of bounds");
     if b {
         n | (1 << pos)
     } else {

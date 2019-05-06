@@ -1,19 +1,20 @@
-use std::fs::File;
-use std::io::Read;
-
 extern crate clap;
 use clap::{App, Arg};
+extern crate glium;
+
+use std::fs::File;
+use std::io::Read;
 
 mod cartridge;
 mod cpu;
 mod emu;
 mod gb;
+mod gpu;
 mod memory;
 mod mmu;
 mod reg;
 mod util;
-
-use emu::Emulator;
+mod window;
 
 fn main() {
     let matches = App::new("gameboy.rust")
@@ -25,10 +26,10 @@ fn main() {
                 .required(true),
         )
         .get_matches();
-    if let Some(path) = matches.value_of("file_path") {
-        let mut file = File::open(path).unwrap();
-        let mut data = Vec::new();
-        file.read_to_end(&mut data).unwrap();
-        Emulator::new(data).run();
-    }
+    let path = matches.value_of("file_path").unwrap();
+    let mut file = File::open(path).unwrap();
+    let mut data = Vec::new();
+    file.read_to_end(&mut data).unwrap();
+
+    emu::Emulator::new(data).run();
 }

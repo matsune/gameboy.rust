@@ -2,23 +2,16 @@ use crate::util::{get_lsb, get_msb, is_bit_on, set_bit};
 
 #[derive(Default)]
 pub struct Registers {
-    // Accumulator & Flags
     pub a: u8,
     pub f: u8,
-    // BC
     pub b: u8,
     pub c: u8,
-    // DE
     pub d: u8,
     pub e: u8,
-    // HL
     pub h: u8,
     pub l: u8,
-    // Stack Pointer
     pub sp: u16,
-    // Program Counter
     pub pc: u16,
-    // Interrupt Master Enable flag
     pub ime: bool,
 }
 

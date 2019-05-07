@@ -18,6 +18,6 @@ impl Gameboy {
 
     pub fn tick(&mut self) {
         let cycles = self.cpu.tick(&mut self.mmu);
-        self.mmu.gpu.tick(cycles);
+        self.mmu.tick(cycles);
     }
 }

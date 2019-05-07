@@ -16,7 +16,6 @@ pub trait Memory {
     }
 }
 
-// #[derive(Debug)]
 pub struct RAM {
     pub memory: Vec<u8>,
     offset: u16,

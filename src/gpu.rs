@@ -94,7 +94,7 @@ impl GPU {
         }
     }
 
-    pub fn tick(&mut self, cycles: usize) {
+    pub fn tick(&mut self, cycles: usize, interrupt_flags: &mut u8) {
         self.redraw = false;
         self.cycles += cycles;
 
@@ -123,6 +123,8 @@ impl GPU {
                     if self.line == PIXELS_H - 1 {
                         self.mode = Mode::VBlank;
                         self.redraw = true;
+
+                        *interrupt_flags |= 0x01; // VBLANK interrupt
                     } else {
                         self.mode = Mode::OAM;
                     }

@@ -1,5 +1,5 @@
 use crate::memory::Memory;
-use crate::mmu::MMU;
+use crate::mmu::{InterruptFlag, MMU};
 use crate::reg::{Flag, Registers};
 use crate::util::{is_bit_on, set_bit};
 
@@ -95,7 +95,7 @@ impl CPU {
             return 0;
         }
         let int_e = mmu.interrupt_enable;
-        let int_f = mmu.interrupt_flag;
+        let int_f = mmu.interrupt_flag.get();
         let fired = int_e & int_f;
         if fired == 0 {
             return 0;
@@ -107,7 +107,9 @@ impl CPU {
         self.ime = false;
 
         if is_bit_on(fired, 0) {
-            set_bit(&mut mmu.interrupt_flag, 0, false);
+            let mut f = mmu.interrupt_flag.get();
+            set_bit(&mut f, 0, false);
+            mmu.interrupt_flag = InterruptFlag::from(f);
             self.ime = false;
             self.push(mmu, self.reg.pc);
             self.reg.pc = 0x0040;

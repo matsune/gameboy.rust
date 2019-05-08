@@ -2,6 +2,35 @@ use crate::cartridge::Cartridge;
 use crate::gpu::GPU;
 use crate::memory::{Memory, RAM};
 use crate::serial::Serial;
+use crate::timer::Timer;
+
+pub enum InterruptType {
+    VBlank = 0,
+    LCDC = 1,
+    Timer = 2,
+    Serial = 3,
+    P10P13 = 4,
+}
+
+pub struct InterruptFlag {
+    inner: u8,
+}
+
+impl InterruptFlag {
+    pub fn get(&self) -> u8 {
+        self.inner
+    }
+
+    pub fn set_flag(&mut self, t: InterruptType) {
+        self.inner |= 1 << t as u8;
+    }
+}
+
+impl From<u8> for InterruptFlag {
+    fn from(n: u8) -> Self {
+        Self { inner: n }
+    }
+}
 
 pub struct MMU {
     cartridge: Cartridge,
@@ -10,8 +39,9 @@ pub struct MMU {
     hram: RAM,
     oam: RAM,
     serial: Serial,
+    timer: Timer,
     pub gpu: GPU,
-    pub interrupt_flag: u8,
+    pub interrupt_flag: InterruptFlag,
     pub interrupt_enable: u8,
 }
 
@@ -24,13 +54,15 @@ impl MMU {
             hram: RAM::new(0xff80, 0x7f),
             oam: RAM::new(0xfe00, 0xa0),
             serial: Serial::default(),
+            timer: Timer::new(),
             gpu: GPU::new(),
-            interrupt_flag: 0,
+            interrupt_flag: InterruptFlag::from(0),
             interrupt_enable: 0,
         }
     }
 
     pub fn tick(&mut self, cycles: usize) {
+        self.timer.tick(&mut self.interrupt_flag);
         self.gpu.tick(cycles, &mut self.interrupt_flag);
     }
 }
@@ -54,8 +86,8 @@ impl Memory for MMU {
             }
             0xff00 => unimplemented!("joypad"),
             0xff01...0xff02 => self.serial.read(address),
-            0xff04...0xff07 => unimplemented!("timer"),
-            0xff0f => self.interrupt_flag,
+            0xff04...0xff07 => self.timer.read(address),
+            0xff0f => self.interrupt_flag.get(),
             0xff40...0xff4f => self.gpu.read(address),
             0xff50 => self.cartridge.read(address),
             0xff51...0xff55 => unimplemented!("hdma"),
@@ -92,8 +124,8 @@ impl Memory for MMU {
             ),
             0xff00 => unimplemented!("joypad"),
             0xff01...0xff02 => self.serial.write(address, value),
-            0xff04...0xff07 => unimplemented!("timer"),
-            0xff0f => self.interrupt_flag = value,
+            0xff04...0xff07 => self.timer.write(address,value),
+            0xff0f => self.interrupt_flag = InterruptFlag::from(value),
             0xff10...0xff3f => {} // sound
             0xff40...0xff4f => self.gpu.write(address, value),
             0xff50 => self.cartridge.write(address, value),

@@ -1,6 +1,7 @@
 use std::convert::From;
 
 use crate::memory::{Memory, RAM};
+use crate::mmu::{InterruptFlag, InterruptType};
 use crate::util::is_bit_on;
 
 pub const PIXELS_W: u8 = 160;
@@ -105,7 +106,7 @@ impl GPU {
         }
     }
 
-    pub fn tick(&mut self, cycles: usize, interrupt_flags: &mut u8) {
+    pub fn tick(&mut self, cycles: usize, interrupt_flag: &mut InterruptFlag) {
         self.redraw = false;
         self.cycles += cycles;
 
@@ -135,7 +136,7 @@ impl GPU {
                         self.mode = Mode::VBlank;
                         self.redraw = true;
 
-                        *interrupt_flags |= 0x01; // VBLANK interrupt
+                        interrupt_flag.set_flag(InterruptType::VBlank);
                     } else {
                         self.mode = Mode::OAM;
                     }

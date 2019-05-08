@@ -14,6 +14,7 @@ mod memory;
 mod mmu;
 mod reg;
 mod serial;
+mod timer;
 mod util;
 mod window;
 

@@ -13,6 +13,7 @@ mod gpu;
 mod memory;
 mod mmu;
 mod reg;
+mod serial;
 mod util;
 mod window;
 

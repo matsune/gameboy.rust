@@ -62,16 +62,22 @@ enum Mode {
 
 #[derive(Debug)]
 pub struct GPU {
-    vram: RAM,
+    vram: RAM, // TODO: CGB mode
     mode: Mode,
     cycles: usize,
-    lcdc: LCDC,     // 0xff40
-    stat: u8,       // 0xff41
-    scy: u8,        // 0xff42
-    scx: u8,        // 0xff43
-    line: u8,       // 0xff44
-    lyc: u8,        // 0xff45
+    lcdc: LCDC, // 0xff40
+    stat: u8,   // 0xff41
+    scy: u8,    // 0xff42
+    scx: u8,    // 0xff43
+    line: u8,   // 0xff44
+    lyc: u8,    // 0xff45
+    // TODO: dma
+    dma: u8,        // 0xff46
     bg_palette: u8, // 0xff47
+    obp_0: u8,      // 0xff48
+    obp_1: u8,      // 0xff49
+    wy: u8,         // 0xff4a
+    wx: u8,         // 0xff4b
     pub redraw: bool,
     pub data: Vec<u8>,
 }
@@ -89,6 +95,11 @@ impl GPU {
             line: 0,
             lyc: 0,
             bg_palette: 0,
+            dma: 0,
+            obp_0: 0,
+            obp_1: 0,
+            wy: 0,
+            wx: 0,
             redraw: false,
             data: vec![0u8; usize::from(PIXELS_W) * usize::from(PIXELS_H) * 3],
         }
@@ -214,7 +225,12 @@ impl Memory for GPU {
             0xff43 => self.scx,
             0xff44 => self.line,
             0xff45 => self.lyc,
+            0xff46 => self.dma,
             0xff47 => self.bg_palette,
+            0xff48 => self.obp_0,
+            0xff49 => self.obp_1,
+            0xff4a => self.wy,
+            0xff4b => self.wx,
             _ => unimplemented!("GPU read to address 0x{:04x}", address),
         }
     }
@@ -228,7 +244,12 @@ impl Memory for GPU {
             0xff43 => self.scx = value,
             0xff44 => self.line = value,
             0xff45 => self.lyc = value,
+            0xff46 => self.dma = value,
             0xff47 => self.bg_palette = value,
+            0xff48 => self.obp_0 = value,
+            0xff49 => self.obp_1 = value,
+            0xff4a => self.wy = value,
+            0xff4b => self.wx = value,
             _ => unimplemented!(
                 "GPU write to address 0x{:04x} value 0x{:02x}",
                 address,

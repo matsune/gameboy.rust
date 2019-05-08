@@ -21,9 +21,6 @@ impl Emulator {
         let mut closed = false;
         while !closed {
             self.gameboy.tick();
-            if self.gameboy.cpu.reg.pc == 0x100 {
-                break;
-            }
 
             if self.gameboy.mmu.gpu.redraw {
                 self.window.draw(&self.gameboy.mmu.gpu.data);

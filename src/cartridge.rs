@@ -239,7 +239,7 @@ impl ExternalRam {
     fn read(&self, offset: u16) -> u8 {
         let idx = self.get_index(offset);
         if idx < self.ram.len() {
-            self.ram[usize::from(idx)]
+            self.ram[idx]
         } else {
             0xff
         }
@@ -350,8 +350,8 @@ impl Memory for Mbc1 {
             }
             // Lower ROM Bank Number
             0x2000...0x3fff => {
-                let upper = self.selected_rom_bank & 0b01100000;
-                let mut lower = u16::from(value) & 0b00011111;
+                let upper = self.selected_rom_bank & 0b0110_0000;
+                let mut lower = u16::from(value) & 0b0001_1111;
                 if lower == 0 {
                     lower = 1;
                 }
@@ -360,8 +360,8 @@ impl Memory for Mbc1 {
             // RAM Bank Number or Upper ROM Bank Number
             0x4000...0x5fff => {
                 if self.is_rom_mode() {
-                    let lower = self.selected_rom_bank & 0b00011111;
-                    let upper = u16::from(value) & 0b01100000;
+                    let lower = self.selected_rom_bank & 0b0001_1111;
+                    let upper = u16::from(value) & 0b0110_0000;
                     self.select_rom_bank(upper | lower);
                 } else {
                     self.select_ram_bank(value & 0b11);

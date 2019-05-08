@@ -161,20 +161,19 @@ impl GPU {
         } else {
             0x9800
         };
-        self.vram
-            .read(bg_tilemap_offset + u16::from(tile_x % 32) + u16::from(tile_y % 32) * 32)
-            as i16
+        i16::from(
+            self.vram
+                .read(bg_tilemap_offset + u16::from(tile_x % 32) + u16::from(tile_y % 32) * 32),
+        )
     }
 
     fn get_color(&self, tile_id: i16, pixel_x: u8, pixel_y: u8) -> u8 {
         let offset = if self.lcdc.background_tileset() {
             0x8000 + tile_id as u16 * 0x10
+        } else if tile_id < 0 {
+            0x9000 - (tile_id.abs() as u16) * 0x10
         } else {
-            if tile_id < 0 {
-                0x9000 - (tile_id.abs() as u16) * 0x10
-            } else {
-                0x9000 + (tile_id.abs() as u16) * 0x10
-            }
+            0x9000 + (tile_id.abs() as u16) * 0x10
         };
 
         let a = self.vram.read(offset + u16::from(pixel_y) * 2);

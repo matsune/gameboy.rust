@@ -1101,7 +1101,7 @@ impl CPU {
         let r = n.wrapping_sub(1);
         self.reg.set_flag(Flag::Z, r == 0);
         self.reg.set_flag(Flag::N, true);
-        self.reg.set_flag(Flag::H, (n & 0x0f) == 0);
+        self.reg.set_flag(Flag::H, n.trailing_zeros() >= 4);
         r
     }
 
@@ -1220,6 +1220,6 @@ impl CPU {
     fn alu_jr(&mut self, mmu: &mut MMU) {
         let n = mmu.read(self.reg.pc) as i8;
         self.reg.pc += 1;
-        self.reg.pc = ((self.reg.pc as u32 as i32) + (n as i32)) as u16;
+        self.reg.pc = (u32::from(self.reg.pc) as i32 + i32::from(n)) as u16;
     }
 }

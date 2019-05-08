@@ -26,8 +26,8 @@ impl RAM {
     pub fn new(offset: u16, size: u16) -> Self {
         Self {
             memory: vec![0; usize::from(size)],
-            offset: offset,
-            size: size,
+            offset,
+            size,
         }
     }
 }

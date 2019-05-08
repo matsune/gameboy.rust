@@ -81,14 +81,6 @@ impl Registers {
         self.set_hl((hl + 1) % 0xffff);
         hl
     }
-
-    pub fn decrement_sp(&mut self) {
-        self.sp = (self.sp - 1) % 0xffff;
-    }
-
-    pub fn increment_sp(&mut self) {
-        self.sp = (self.sp + 1) % 0xffff;
-    }
 }
 
 #[derive(Debug)]

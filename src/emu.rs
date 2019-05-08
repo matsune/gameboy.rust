@@ -20,9 +20,7 @@ impl Emulator {
 
         let mut closed = false;
         while !closed {
-            self.gameboy.tick();
-
-            if self.gameboy.mmu.gpu.redraw {
+            if self.gameboy.tick() {
                 self.window.draw(&self.gameboy.mmu.gpu.data);
             }
 

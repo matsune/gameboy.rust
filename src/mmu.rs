@@ -61,9 +61,9 @@ impl MMU {
         }
     }
 
-    pub fn tick(&mut self, cycles: usize) {
+    pub fn tick(&mut self, cycles: usize) -> bool {
         self.timer.tick(&mut self.interrupt_flag);
-        self.gpu.tick(cycles, &mut self.interrupt_flag);
+        self.gpu.tick(cycles, &mut self.interrupt_flag)
     }
 }
 
@@ -96,11 +96,9 @@ impl Memory for MMU {
             0xff80...0xfffe => self.hram.read(address),
             0xffff => self.interrupt_enable,
             _ => {
-                println!("read unknown area 0x{:04x}",address); 
+                println!("read unknown area 0x{:04x}", address);
                 0
             }
-            //_ => unimplemented!("read to address 0x{:04x}", address),
-            
         }
     }
 
@@ -124,7 +122,7 @@ impl Memory for MMU {
             ),
             0xff00 => unimplemented!("joypad"),
             0xff01...0xff02 => self.serial.write(address, value),
-            0xff04...0xff07 => self.timer.write(address,value),
+            0xff04...0xff07 => self.timer.write(address, value),
             0xff0f => self.interrupt_flag = InterruptFlag::from(value),
             0xff10...0xff3f => {} // sound
             0xff40...0xff4f => self.gpu.write(address, value),
@@ -143,7 +141,6 @@ impl Memory for MMU {
                 "write to unknown area 0x{:04x} value 0x{:02x}",
                 address, value
             ),
-            // _ => unimplemented!("write to address 0x{:04x} value 0x{:02x}", address, value),
         };
     }
 }

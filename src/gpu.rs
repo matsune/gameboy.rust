@@ -79,7 +79,6 @@ pub struct GPU {
     obp_1: u8,      // 0xff49
     wy: u8,         // 0xff4a
     wx: u8,         // 0xff4b
-    pub redraw: bool,
     pub data: Vec<u8>,
 }
 
@@ -101,13 +100,12 @@ impl GPU {
             obp_1: 0,
             wy: 0,
             wx: 0,
-            redraw: false,
             data: vec![0u8; usize::from(PIXELS_W) * usize::from(PIXELS_H) * 3],
         }
     }
 
-    pub fn tick(&mut self, cycles: usize, interrupt_flag: &mut InterruptFlag) {
-        self.redraw = false;
+    pub fn tick(&mut self, cycles: usize, interrupt_flag: &mut InterruptFlag) -> bool {
+        let mut redraw = false;
         self.cycles += cycles;
 
         match self.mode {
@@ -134,7 +132,7 @@ impl GPU {
 
                     if self.line == PIXELS_H - 1 {
                         self.mode = Mode::VBlank;
-                        self.redraw = true;
+                        redraw = true;
 
                         interrupt_flag.set_flag(InterruptType::VBlank);
                     } else {
@@ -154,6 +152,7 @@ impl GPU {
                 }
             }
         }
+        redraw
     }
 
     fn get_tile_id(&self, tile_x: u8, tile_y: u8) -> i16 {

@@ -27,23 +27,55 @@ const CB_CYCLES: [usize; 256] = [
 
 pub struct CPU {
     pub reg: Registers,
-    enable_interrupts: bool,
+    di: u8,
+    ei: u8,
+    ime: bool,
+    halted: bool,
 }
 
 impl CPU {
     pub fn new() -> Self {
         Self {
             reg: Registers::default(),
-            enable_interrupts: false,
+            di: 0,
+            ei: 0,
+            ime: false,
+            halted: false,
         }
     }
 
     pub fn tick(&mut self, mmu: &mut MMU) -> usize {
-        let opcode = self.read_byte(mmu);
-        let mut cycles = self.command(mmu, opcode);
-        // println!("Registers: {:?}", self.reg);
-        cycles += self.handle_interrupt(mmu);
-        cycles
+        self.update_ime();
+        match self.handle_interrupt(mmu) {
+            0 => {}
+            n => return n,
+        }
+        if self.halted {
+            1
+        } else {
+            let opcode = self.read_byte(mmu);
+            self.command(mmu, opcode)
+            // println!("Registers: {:?}", self.reg);
+        }
+    }
+
+    fn update_ime(&mut self) {
+        self.di = match self.di {
+            2 => 1,
+            1 => {
+                self.ime = false;
+                0
+            }
+            _ => 0,
+        };
+        self.ei = match self.ei {
+            2 => 1,
+            1 => {
+                self.ime = true;
+                0
+            }
+            _ => 0,
+        };
     }
 
     fn read_byte(&mut self, mmu: &mut MMU) -> u8 {
@@ -59,21 +91,30 @@ impl CPU {
     }
 
     fn handle_interrupt(&mut self, mmu: &mut MMU) -> usize {
+        if !self.ime && !self.halted {
+            return 0;
+        }
         let int_e = mmu.interrupt_enable;
         let int_f = mmu.interrupt_flag;
-        if self.enable_interrupts && int_e != 0 && int_f != 0 {
-            let fired = int_e & int_f;
-            if is_bit_on(fired, 0) {
-                mmu.interrupt_flag = set_bit(mmu.interrupt_flag, 0, false);
-                self.enable_interrupts = false;
-                self.push(mmu, self.reg.pc);
-                self.reg.pc = 0x0040;
-                return 12;
-            } else if fired != 0 {
-                unimplemented!("interrupt");
-            }
+        let fired = int_e & int_f;
+        if fired == 0 {
+            return 0;
         }
-        0
+        self.halted = false;
+        if !self.ime {
+            return 0;
+        }
+        self.ime = false;
+
+        if is_bit_on(fired, 0) {
+            mmu.interrupt_flag = set_bit(mmu.interrupt_flag, 0, false);
+            self.ime = false;
+            self.push(mmu, self.reg.pc);
+            self.reg.pc = 0x0040;
+            12
+        } else {
+            unimplemented!("interrupt")
+        }
     }
 
     fn push(&mut self, mmu: &mut MMU, word: u16) {
@@ -291,7 +332,7 @@ impl CPU {
             0x73 => mmu.write(self.reg.hl(), self.reg.e),
             0x74 => mmu.write(self.reg.hl(), self.reg.h),
             0x75 => mmu.write(self.reg.hl(), self.reg.l),
-            0x76 => unimplemented!("HALT"),
+            0x76 => self.halted = true,
             0x77 => mmu.write(self.reg.hl(), self.reg.a),
             0x78 => self.reg.a = self.reg.b,
             0x79 => self.reg.a = self.reg.c,
@@ -472,7 +513,7 @@ impl CPU {
             }
             0xd9 => {
                 self.reg.pc = self.pop(mmu);
-                self.enable_interrupts = true;
+                self.ime = true;
             }
             0xda => {
                 if self.reg.get_flag(Flag::C) {
@@ -540,7 +581,7 @@ impl CPU {
                 self.reg.set_af(nn);
             }
             0xf2 => self.reg.a = mmu.read(0xff00 + u16::from(self.reg.c)),
-            0xf3 => self.enable_interrupts = false,
+            0xf3 => self.di = 2,
             0xf4 => panic!("unknown instruction 0x{:x}", opcode),
             0xf5 => self.push(mmu, self.reg.af()),
             0xf6 => {
@@ -567,7 +608,7 @@ impl CPU {
                 let nn = self.read_word(mmu);
                 self.reg.a = mmu.read(nn);
             }
-            0xfb => self.enable_interrupts = true,
+            0xfb => self.ei = 2,
             0xfc | 0xfd => panic!("unknown instruction 0x{:x}", opcode),
             0xfe => {
                 let n = self.read_byte(mmu);

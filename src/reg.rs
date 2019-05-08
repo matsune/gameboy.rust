@@ -12,7 +12,6 @@ pub struct Registers {
     pub l: u8,
     pub sp: u16,
     pub pc: u16,
-    pub ime: bool,
 }
 
 impl std::fmt::Debug for Registers {

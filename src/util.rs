@@ -11,13 +11,9 @@ pub fn is_bit_on(n: u8, pos: u8) -> bool {
     (n & (1 << pos)) != 0
 }
 
-pub fn set_bit(n: u8, pos: u8, b: bool) -> u8 {
+pub fn set_bit(n: &mut u8, pos: u8, b: bool) {
     assert!(pos < 8, "Bit out of bounds");
-    if b {
-        n | (1 << pos)
-    } else {
-        !(1 << pos) & n & 0xff
-    }
+    *n = if b { *n | (1 << pos) } else { !(1 << pos) & *n };
 }
 
 #[cfg(test)]
@@ -39,8 +35,13 @@ mod tests {
 
     #[test]
     fn test_set_bit() {
-        assert_eq!(set_bit(0b_1000_0000, 7, false), 0b_0000_0000);
-        assert_eq!(set_bit(0b_1000_0000, 6, true), 0b_1100_0000);
-        assert_eq!(set_bit(0b_0000_0000, 1, true), 0b_0000_0010);
+        let mut a = 0b_1000_0000;
+        set_bit(&mut a, 7, false);
+        assert_eq!(a, 0b_0000_0000);
+        set_bit(&mut a, 6, true);
+        assert_eq!(a, 0b_0100_0000);
+        set_bit(&mut a, 6, false);
+        set_bit(&mut a, 1, true);
+        assert_eq!(a, 0b_0000_0010);
     }
 }

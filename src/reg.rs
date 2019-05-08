@@ -108,6 +108,6 @@ impl Registers {
     }
 
     pub fn set_flag(&mut self, f: Flag, b: bool) {
-        self.f = set_bit(self.f, f as u8, b);
+        set_bit(&mut self.f, f as u8, b);
     }
 }

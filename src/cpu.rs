@@ -107,7 +107,7 @@ impl CPU {
         self.ime = false;
 
         if is_bit_on(fired, 0) {
-            mmu.interrupt_flag = set_bit(mmu.interrupt_flag, 0, false);
+            set_bit(&mut mmu.interrupt_flag, 0, false);
             self.ime = false;
             self.push(mmu, self.reg.pc);
             self.reg.pc = 0x0040;
@@ -787,199 +787,215 @@ impl CPU {
             0x7d => self.alu_bit(7, self.reg.l),
             0x7e => self.alu_bit(7, mmu.read(self.reg.hl())),
             0x7f => self.alu_bit(7, self.reg.a),
-            0x80 => self.reg.b = set_bit(self.reg.b, 0, false),
-            0x81 => self.reg.c = set_bit(self.reg.c, 0, false),
-            0x82 => self.reg.d = set_bit(self.reg.d, 0, false),
-            0x83 => self.reg.e = set_bit(self.reg.e, 0, false),
-            0x84 => self.reg.h = set_bit(self.reg.h, 0, false),
-            0x85 => self.reg.l = set_bit(self.reg.l, 0, false),
+            0x80 => set_bit(&mut self.reg.b, 0, false),
+            0x81 => set_bit(&mut self.reg.c, 0, false),
+            0x82 => set_bit(&mut self.reg.d, 0, false),
+            0x83 => set_bit(&mut self.reg.e, 0, false),
+            0x84 => set_bit(&mut self.reg.h, 0, false),
+            0x85 => set_bit(&mut self.reg.l, 0, false),
             0x86 => {
                 let hl = self.reg.hl();
-                let b = set_bit(mmu.read(hl), 0, false);
+                let mut b = mmu.read(hl);
+                set_bit(&mut b, 0, false);
                 mmu.write(hl, b);
             }
-            0x87 => self.reg.a = set_bit(self.reg.a, 0, false),
+            0x87 => set_bit(&mut self.reg.a, 0, false),
 
-            0x88 => self.reg.b = set_bit(self.reg.b, 1, false),
-            0x89 => self.reg.c = set_bit(self.reg.c, 1, false),
-            0x8a => self.reg.d = set_bit(self.reg.d, 1, false),
-            0x8b => self.reg.e = set_bit(self.reg.e, 1, false),
-            0x8c => self.reg.h = set_bit(self.reg.h, 1, false),
-            0x8d => self.reg.l = set_bit(self.reg.l, 1, false),
+            0x88 => set_bit(&mut self.reg.b, 1, false),
+            0x89 => set_bit(&mut self.reg.c, 1, false),
+            0x8a => set_bit(&mut self.reg.d, 1, false),
+            0x8b => set_bit(&mut self.reg.e, 1, false),
+            0x8c => set_bit(&mut self.reg.h, 1, false),
+            0x8d => set_bit(&mut self.reg.l, 1, false),
             0x8e => {
                 let hl = self.reg.hl();
-                let b = set_bit(mmu.read(hl), 1, false);
+                let mut b = mmu.read(hl);
+                set_bit(&mut b, 1, false);
                 mmu.write(hl, b);
             }
-            0x8f => self.reg.a = set_bit(self.reg.a, 1, false),
-            0x90 => self.reg.b = set_bit(self.reg.b, 2, false),
-            0x91 => self.reg.c = set_bit(self.reg.c, 2, false),
-            0x92 => self.reg.d = set_bit(self.reg.d, 2, false),
-            0x93 => self.reg.e = set_bit(self.reg.e, 2, false),
-            0x94 => self.reg.h = set_bit(self.reg.h, 2, false),
-            0x95 => self.reg.l = set_bit(self.reg.l, 2, false),
+            0x8f => set_bit(&mut self.reg.a, 1, false),
+            0x90 => set_bit(&mut self.reg.b, 2, false),
+            0x91 => set_bit(&mut self.reg.c, 2, false),
+            0x92 => set_bit(&mut self.reg.d, 2, false),
+            0x93 => set_bit(&mut self.reg.e, 2, false),
+            0x94 => set_bit(&mut self.reg.h, 2, false),
+            0x95 => set_bit(&mut self.reg.l, 2, false),
             0x96 => {
                 let hl = self.reg.hl();
-                let b = set_bit(mmu.read(hl), 2, false);
+                let mut b = mmu.read(hl);
+                set_bit(&mut b, 2, false);
                 mmu.write(hl, b);
             }
-            0x97 => self.reg.a = set_bit(self.reg.a, 2, false),
-            0x98 => self.reg.b = set_bit(self.reg.b, 3, false),
-            0x99 => self.reg.c = set_bit(self.reg.c, 3, false),
-            0x9a => self.reg.d = set_bit(self.reg.d, 3, false),
-            0x9b => self.reg.e = set_bit(self.reg.e, 3, false),
-            0x9c => self.reg.h = set_bit(self.reg.h, 3, false),
-            0x9d => self.reg.l = set_bit(self.reg.l, 3, false),
+            0x97 => set_bit(&mut self.reg.a, 2, false),
+            0x98 => set_bit(&mut self.reg.b, 3, false),
+            0x99 => set_bit(&mut self.reg.c, 3, false),
+            0x9a => set_bit(&mut self.reg.d, 3, false),
+            0x9b => set_bit(&mut self.reg.e, 3, false),
+            0x9c => set_bit(&mut self.reg.h, 3, false),
+            0x9d => set_bit(&mut self.reg.l, 3, false),
             0x9e => {
                 let hl = self.reg.hl();
-                let b = set_bit(mmu.read(hl), 3, false);
+                let mut b = mmu.read(hl);
+                set_bit(&mut b, 3, false);
                 mmu.write(hl, b);
             }
-            0x9f => self.reg.a = set_bit(self.reg.a, 3, false),
-            0xa0 => self.reg.b = set_bit(self.reg.b, 4, false),
-            0xa1 => self.reg.c = set_bit(self.reg.c, 4, false),
-            0xa2 => self.reg.d = set_bit(self.reg.d, 4, false),
-            0xa3 => self.reg.e = set_bit(self.reg.e, 4, false),
-            0xa4 => self.reg.h = set_bit(self.reg.h, 4, false),
-            0xa5 => self.reg.l = set_bit(self.reg.l, 4, false),
+            0x9f => set_bit(&mut self.reg.a, 3, false),
+            0xa0 => set_bit(&mut self.reg.b, 4, false),
+            0xa1 => set_bit(&mut self.reg.c, 4, false),
+            0xa2 => set_bit(&mut self.reg.d, 4, false),
+            0xa3 => set_bit(&mut self.reg.e, 4, false),
+            0xa4 => set_bit(&mut self.reg.h, 4, false),
+            0xa5 => set_bit(&mut self.reg.l, 4, false),
             0xa6 => {
                 let hl = self.reg.hl();
-                let b = set_bit(mmu.read(hl), 4, false);
+                let mut b = mmu.read(hl);
+                set_bit(&mut b, 4, false);
                 mmu.write(hl, b);
             }
-            0xa7 => self.reg.a = set_bit(self.reg.a, 4, false),
-            0xa8 => self.reg.b = set_bit(self.reg.b, 5, false),
-            0xa9 => self.reg.c = set_bit(self.reg.c, 5, false),
-            0xaa => self.reg.d = set_bit(self.reg.d, 5, false),
-            0xab => self.reg.e = set_bit(self.reg.e, 5, false),
-            0xac => self.reg.h = set_bit(self.reg.h, 5, false),
-            0xad => self.reg.l = set_bit(self.reg.l, 5, false),
+            0xa7 => set_bit(&mut self.reg.a, 4, false),
+            0xa8 => set_bit(&mut self.reg.b, 5, false),
+            0xa9 => set_bit(&mut self.reg.c, 5, false),
+            0xaa => set_bit(&mut self.reg.d, 5, false),
+            0xab => set_bit(&mut self.reg.e, 5, false),
+            0xac => set_bit(&mut self.reg.h, 5, false),
+            0xad => set_bit(&mut self.reg.l, 5, false),
             0xae => {
                 let hl = self.reg.hl();
-                let b = set_bit(mmu.read(hl), 5, false);
+                let mut b = mmu.read(hl);
+                set_bit(&mut b, 5, false);
                 mmu.write(hl, b);
             }
-            0xaf => self.reg.a = set_bit(self.reg.a, 5, false),
-            0xb0 => self.reg.b = set_bit(self.reg.b, 6, false),
-            0xb1 => self.reg.c = set_bit(self.reg.c, 6, false),
-            0xb2 => self.reg.d = set_bit(self.reg.d, 6, false),
-            0xb3 => self.reg.e = set_bit(self.reg.e, 6, false),
-            0xb4 => self.reg.h = set_bit(self.reg.h, 6, false),
-            0xb5 => self.reg.l = set_bit(self.reg.l, 6, false),
+            0xaf => set_bit(&mut self.reg.a, 5, false),
+            0xb0 => set_bit(&mut self.reg.b, 6, false),
+            0xb1 => set_bit(&mut self.reg.c, 6, false),
+            0xb2 => set_bit(&mut self.reg.d, 6, false),
+            0xb3 => set_bit(&mut self.reg.e, 6, false),
+            0xb4 => set_bit(&mut self.reg.h, 6, false),
+            0xb5 => set_bit(&mut self.reg.l, 6, false),
             0xb6 => {
                 let hl = self.reg.hl();
-                let b = set_bit(mmu.read(hl), 6, false);
+                let mut b = mmu.read(hl);
+                set_bit(&mut b, 6, false);
                 mmu.write(hl, b);
             }
-            0xb7 => self.reg.a = set_bit(self.reg.a, 6, false),
-            0xb8 => self.reg.b = set_bit(self.reg.b, 7, false),
-            0xb9 => self.reg.c = set_bit(self.reg.c, 7, false),
-            0xba => self.reg.d = set_bit(self.reg.d, 7, false),
-            0xbb => self.reg.e = set_bit(self.reg.e, 7, false),
-            0xbc => self.reg.h = set_bit(self.reg.h, 7, false),
-            0xbd => self.reg.l = set_bit(self.reg.l, 7, false),
+            0xb7 => set_bit(&mut self.reg.a, 6, false),
+            0xb8 => set_bit(&mut self.reg.b, 7, false),
+            0xb9 => set_bit(&mut self.reg.c, 7, false),
+            0xba => set_bit(&mut self.reg.d, 7, false),
+            0xbb => set_bit(&mut self.reg.e, 7, false),
+            0xbc => set_bit(&mut self.reg.h, 7, false),
+            0xbd => set_bit(&mut self.reg.l, 7, false),
             0xbe => {
                 let hl = self.reg.hl();
-                let b = set_bit(mmu.read(hl), 7, false);
+                let mut b = mmu.read(hl);
+                set_bit(&mut b, 7, false);
                 mmu.write(hl, b);
             }
-            0xbf => self.reg.a = set_bit(self.reg.a, 7, false),
-            0xc0 => self.reg.b = set_bit(self.reg.b, 0, true),
-            0xc1 => self.reg.c = set_bit(self.reg.c, 0, true),
-            0xc2 => self.reg.d = set_bit(self.reg.d, 0, true),
-            0xc3 => self.reg.e = set_bit(self.reg.e, 0, true),
-            0xc4 => self.reg.h = set_bit(self.reg.h, 0, true),
-            0xc5 => self.reg.l = set_bit(self.reg.l, 0, true),
+            0xbf => set_bit(&mut self.reg.a, 7, false),
+            0xc0 => set_bit(&mut self.reg.b, 0, true),
+            0xc1 => set_bit(&mut self.reg.c, 0, true),
+            0xc2 => set_bit(&mut self.reg.d, 0, true),
+            0xc3 => set_bit(&mut self.reg.e, 0, true),
+            0xc4 => set_bit(&mut self.reg.h, 0, true),
+            0xc5 => set_bit(&mut self.reg.l, 0, true),
             0xc6 => {
                 let hl = self.reg.hl();
-                let b = set_bit(mmu.read(hl), 0, true);
+                let mut b = mmu.read(hl);
+                set_bit(&mut b, 0, true);
                 mmu.write(hl, b);
             }
-            0xc7 => self.reg.a = set_bit(self.reg.a, 0, true),
-            0xc8 => self.reg.b = set_bit(self.reg.b, 1, true),
-            0xc9 => self.reg.c = set_bit(self.reg.c, 1, true),
-            0xca => self.reg.d = set_bit(self.reg.d, 1, true),
-            0xcb => self.reg.e = set_bit(self.reg.e, 1, true),
-            0xcc => self.reg.h = set_bit(self.reg.h, 1, true),
-            0xcd => self.reg.l = set_bit(self.reg.l, 1, true),
+            0xc7 => set_bit(&mut self.reg.a, 0, true),
+            0xc8 => set_bit(&mut self.reg.b, 1, true),
+            0xc9 => set_bit(&mut self.reg.c, 1, true),
+            0xca => set_bit(&mut self.reg.d, 1, true),
+            0xcb => set_bit(&mut self.reg.e, 1, true),
+            0xcc => set_bit(&mut self.reg.h, 1, true),
+            0xcd => set_bit(&mut self.reg.l, 1, true),
             0xce => {
                 let hl = self.reg.hl();
-                let b = set_bit(mmu.read(hl), 1, true);
+                let mut b = mmu.read(hl);
+                set_bit(&mut b, 1, true);
                 mmu.write(hl, b);
             }
-            0xcf => self.reg.a = set_bit(self.reg.a, 1, true),
-            0xd0 => self.reg.b = set_bit(self.reg.b, 2, true),
-            0xd1 => self.reg.c = set_bit(self.reg.c, 2, true),
-            0xd2 => self.reg.d = set_bit(self.reg.d, 2, true),
-            0xd3 => self.reg.e = set_bit(self.reg.e, 2, true),
-            0xd4 => self.reg.h = set_bit(self.reg.h, 2, true),
-            0xd5 => self.reg.l = set_bit(self.reg.l, 2, true),
+            0xcf => set_bit(&mut self.reg.a, 1, true),
+            0xd0 => set_bit(&mut self.reg.b, 2, true),
+            0xd1 => set_bit(&mut self.reg.c, 2, true),
+            0xd2 => set_bit(&mut self.reg.d, 2, true),
+            0xd3 => set_bit(&mut self.reg.e, 2, true),
+            0xd4 => set_bit(&mut self.reg.h, 2, true),
+            0xd5 => set_bit(&mut self.reg.l, 2, true),
             0xd6 => {
                 let hl = self.reg.hl();
-                let b = set_bit(mmu.read(hl), 2, true);
+                let mut b = mmu.read(hl);
+                set_bit(&mut b, 2, true);
                 mmu.write(hl, b);
             }
-            0xd7 => self.reg.a = set_bit(self.reg.a, 2, true),
-            0xd8 => self.reg.b = set_bit(self.reg.b, 3, true),
-            0xd9 => self.reg.c = set_bit(self.reg.c, 3, true),
-            0xda => self.reg.d = set_bit(self.reg.d, 3, true),
-            0xdb => self.reg.e = set_bit(self.reg.e, 3, true),
-            0xdc => self.reg.h = set_bit(self.reg.h, 3, true),
-            0xdd => self.reg.l = set_bit(self.reg.l, 3, true),
+            0xd7 => set_bit(&mut self.reg.a, 2, true),
+            0xd8 => set_bit(&mut self.reg.b, 3, true),
+            0xd9 => set_bit(&mut self.reg.c, 3, true),
+            0xda => set_bit(&mut self.reg.d, 3, true),
+            0xdb => set_bit(&mut self.reg.e, 3, true),
+            0xdc => set_bit(&mut self.reg.h, 3, true),
+            0xdd => set_bit(&mut self.reg.l, 3, true),
             0xde => {
                 let hl = self.reg.hl();
-                let b = set_bit(mmu.read(hl), 3, true);
+                let mut b = mmu.read(hl);
+                set_bit(&mut b, 3, true);
                 mmu.write(hl, b);
             }
-            0xdf => self.reg.a = set_bit(self.reg.a, 3, true),
-            0xe0 => self.reg.b = set_bit(self.reg.b, 4, true),
-            0xe1 => self.reg.c = set_bit(self.reg.c, 4, true),
-            0xe2 => self.reg.d = set_bit(self.reg.d, 4, true),
-            0xe3 => self.reg.e = set_bit(self.reg.e, 4, true),
-            0xe4 => self.reg.h = set_bit(self.reg.h, 4, true),
-            0xe5 => self.reg.l = set_bit(self.reg.l, 4, true),
+            0xdf => set_bit(&mut self.reg.a, 3, true),
+            0xe0 => set_bit(&mut self.reg.b, 4, true),
+            0xe1 => set_bit(&mut self.reg.c, 4, true),
+            0xe2 => set_bit(&mut self.reg.d, 4, true),
+            0xe3 => set_bit(&mut self.reg.e, 4, true),
+            0xe4 => set_bit(&mut self.reg.h, 4, true),
+            0xe5 => set_bit(&mut self.reg.l, 4, true),
             0xe6 => {
                 let hl = self.reg.hl();
-                let b = set_bit(mmu.read(hl), 4, true);
+                let mut b = mmu.read(hl);
+                set_bit(&mut b, 4, true);
                 mmu.write(hl, b);
             }
-            0xe7 => self.reg.a = set_bit(self.reg.a, 4, true),
-            0xe8 => self.reg.b = set_bit(self.reg.b, 5, true),
-            0xe9 => self.reg.c = set_bit(self.reg.c, 5, true),
-            0xea => self.reg.d = set_bit(self.reg.d, 5, true),
-            0xeb => self.reg.e = set_bit(self.reg.e, 5, true),
-            0xec => self.reg.h = set_bit(self.reg.h, 5, true),
-            0xed => self.reg.l = set_bit(self.reg.l, 5, true),
+            0xe7 => set_bit(&mut self.reg.a, 4, true),
+            0xe8 => set_bit(&mut self.reg.b, 5, true),
+            0xe9 => set_bit(&mut self.reg.c, 5, true),
+            0xea => set_bit(&mut self.reg.d, 5, true),
+            0xeb => set_bit(&mut self.reg.e, 5, true),
+            0xec => set_bit(&mut self.reg.h, 5, true),
+            0xed => set_bit(&mut self.reg.l, 5, true),
             0xee => {
                 let hl = self.reg.hl();
-                let b = set_bit(mmu.read(hl), 5, true);
+                let mut b = mmu.read(hl);
+                set_bit(&mut b, 5, true);
                 mmu.write(hl, b);
             }
-            0xef => self.reg.a = set_bit(self.reg.a, 5, true),
-            0xf0 => self.reg.b = set_bit(self.reg.b, 6, true),
-            0xf1 => self.reg.c = set_bit(self.reg.c, 6, true),
-            0xf2 => self.reg.d = set_bit(self.reg.d, 6, true),
-            0xf3 => self.reg.e = set_bit(self.reg.e, 6, true),
-            0xf4 => self.reg.h = set_bit(self.reg.h, 6, true),
-            0xf5 => self.reg.l = set_bit(self.reg.l, 6, true),
+            0xef => set_bit(&mut self.reg.a, 5, true),
+            0xf0 => set_bit(&mut self.reg.b, 6, true),
+            0xf1 => set_bit(&mut self.reg.c, 6, true),
+            0xf2 => set_bit(&mut self.reg.d, 6, true),
+            0xf3 => set_bit(&mut self.reg.e, 6, true),
+            0xf4 => set_bit(&mut self.reg.h, 6, true),
+            0xf5 => set_bit(&mut self.reg.l, 6, true),
             0xf6 => {
                 let hl = self.reg.hl();
-                let b = set_bit(mmu.read(hl), 6, true);
+                let mut b = mmu.read(hl);
+                set_bit(&mut b, 6, true);
                 mmu.write(hl, b);
             }
-            0xf7 => self.reg.a = set_bit(self.reg.a, 6, true),
-            0xf8 => self.reg.b = set_bit(self.reg.b, 7, true),
-            0xf9 => self.reg.c = set_bit(self.reg.c, 7, true),
-            0xfa => self.reg.d = set_bit(self.reg.d, 7, true),
-            0xfb => self.reg.e = set_bit(self.reg.e, 7, true),
-            0xfc => self.reg.h = set_bit(self.reg.h, 7, true),
-            0xfd => self.reg.l = set_bit(self.reg.l, 7, true),
+            0xf7 => set_bit(&mut self.reg.a, 6, true),
+            0xf8 => set_bit(&mut self.reg.b, 7, true),
+            0xf9 => set_bit(&mut self.reg.c, 7, true),
+            0xfa => set_bit(&mut self.reg.d, 7, true),
+            0xfb => set_bit(&mut self.reg.e, 7, true),
+            0xfc => set_bit(&mut self.reg.h, 7, true),
+            0xfd => set_bit(&mut self.reg.l, 7, true),
             0xfe => {
                 let hl = self.reg.hl();
-                let b = set_bit(mmu.read(hl), 7, true);
+                let mut b = mmu.read(hl);
+                set_bit(&mut b, 7, true);
                 mmu.write(hl, b);
             }
-            0xff => self.reg.a = set_bit(self.reg.a, 7, true),
+            0xff => set_bit(&mut self.reg.a, 7, true),
         }
     }
 

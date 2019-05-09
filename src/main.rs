@@ -1,9 +1,9 @@
+use std::fs::File;
+use std::io::Read;
+
 extern crate clap;
 use clap::{App, Arg};
 extern crate glium;
-
-use std::fs::File;
-use std::io::Read;
 
 mod cartridge;
 mod cpu;
@@ -34,5 +34,5 @@ fn main() {
     let mut data = Vec::new();
     file.read_to_end(&mut data).unwrap();
 
-    emu::Emulator::new(data).run();
+    emu::run(cartridge::Cartridge::new(data));
 }

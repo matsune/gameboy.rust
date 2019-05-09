@@ -36,11 +36,11 @@ impl Window {
         }
     }
 
-    pub fn draw(&self, data: &[u8]) {
+    pub fn draw(&self, data: Vec<u8>) {
         let w = u32::from(PIXELS_W);
         let h = u32::from(PIXELS_H);
         let rawimage2d = RawImage2d {
-            data: std::borrow::Cow::Borrowed(data),
+            data: std::borrow::Cow::Owned(data),
             width: w,
             height: h,
             format: ClientFormat::U8U8U8,

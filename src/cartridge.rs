@@ -93,7 +93,7 @@ impl CartridgeType {
     }
 }
 
-pub trait MBC: Memory {}
+pub trait MBC: Memory + Send {}
 
 pub struct Cartridge {
     mbc: Box<MBC>,

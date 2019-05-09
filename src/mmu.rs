@@ -1,5 +1,6 @@
 use crate::cartridge::Cartridge;
 use crate::gpu::GPU;
+use crate::joypad::Joypad;
 use crate::memory::{Memory, RAM};
 use crate::serial::Serial;
 use crate::timer::Timer;
@@ -40,6 +41,7 @@ pub struct MMU {
     oam: RAM,
     serial: Serial,
     timer: Timer,
+    joypad: Joypad,
     pub gpu: GPU,
     pub interrupt_flag: InterruptFlag,
     pub interrupt_enable: u8,
@@ -55,6 +57,7 @@ impl MMU {
             oam: RAM::new(0xfe00, 0xa0),
             serial: Serial::default(),
             timer: Timer::new(),
+            joypad: Joypad::new(),
             gpu: GPU::new(),
             interrupt_flag: InterruptFlag::from(0),
             interrupt_enable: 0,
@@ -84,7 +87,7 @@ impl Memory for MMU {
                 println!("read Unused area 0x{:04x}", address);
                 0
             }
-            0xff00 => unimplemented!("joypad"),
+            0xff00 => self.joypad.read(address),
             0xff01...0xff02 => self.serial.read(address),
             0xff04...0xff07 => self.timer.read(address),
             0xff0f => self.interrupt_flag.get(),
@@ -120,7 +123,7 @@ impl Memory for MMU {
                 "write to Unused area 0x{:04x} value 0x{:02x}",
                 address, value
             ),
-            0xff00 => unimplemented!("joypad"),
+            0xff00 => self.joypad.write(address, value),
             0xff01...0xff02 => self.serial.write(address, value),
             0xff04...0xff07 => self.timer.write(address, value),
             0xff0f => self.interrupt_flag = InterruptFlag::from(value),

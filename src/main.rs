@@ -10,6 +10,7 @@ mod cpu;
 mod emu;
 mod gb;
 mod gpu;
+mod joypad;
 mod memory;
 mod mmu;
 mod reg;

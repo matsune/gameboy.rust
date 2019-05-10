@@ -1,6 +1,6 @@
 use crate::cartridge::Cartridge;
 use crate::gpu::GPU;
-use crate::joypad::Joypad;
+use crate::joypad::{Joypad, JoypadKey};
 use crate::memory::{Memory, RAM};
 use crate::serial::Serial;
 use crate::timer::Timer;
@@ -68,6 +68,14 @@ impl MMU {
         self.timer.tick(&mut self.interrupt_flag);
         self.gpu.tick(cycles, &mut self.interrupt_flag)
     }
+
+    pub fn keydown(&mut self, key: JoypadKey) {
+        self.joypad.keydown(&mut self.interrupt_flag, key);
+    }
+
+    pub fn keyup(&mut self, key: JoypadKey) {
+        self.joypad.keyup(key);
+    }
 }
 
 impl Memory for MMU {
@@ -78,10 +86,10 @@ impl Memory for MMU {
             0xa000...0xbfff => self.cartridge.read(address),
             0xc000...0xcfff => self.wram.read(address),
             0xd000...0xdfff => self.wram.read(address + u16::from(self.wram_bank) * 0x1000),
-            0xe000...0xfdff => {
-                println!("read Reserved Area 0x{:04x}", address);
-                0
-            }
+            0xe000...0xefff => self.wram.read(address - 0x2000),
+            0xf000...0xfdff => self
+                .wram
+                .read(address - 0x2000 + u16::from(self.wram_bank) * 0x1000),
             0xfe00...0xfe9f => self.oam.read(address),
             0xfea0...0xfeff => {
                 println!("read Unused area 0x{:04x}", address);
@@ -114,15 +122,15 @@ impl Memory for MMU {
             0xd000...0xdfff => self
                 .wram
                 .write(address + u16::from(self.wram_bank) * 0x1000, value),
-            0xe000...0xfdff => println!(
-                "write to Reserved area 0x{:04x} value 0x{:02x}",
-                address, value
-            ),
+            0xe000...0xefff => self.wram.write(address - 0x2000, value),
+            0xf000...0xfdff => self
+                .wram
+                .write(address + u16::from(self.wram_bank) * 0x1000, value),
             0xfe00...0xfe9f => self.oam.write(address, value),
-            0xfea0...0xfeff => println!(
-                "write to Unused area 0x{:04x} value 0x{:02x}",
-                address, value
-            ),
+            0xfea0...0xfeff =>{}// println!(
+          //      "write to Unused area 0x{:04x} value 0x{:02x}",
+          //      address, value
+          //  ),
             0xff00 => self.joypad.write(address, value),
             0xff01...0xff02 => self.serial.write(address, value),
             0xff04...0xff07 => self.timer.write(address, value),
@@ -140,10 +148,11 @@ impl Memory for MMU {
             }
             0xff80...0xfffe => self.hram.write(address, value),
             0xffff => self.interrupt_enable = value,
-            _ => println!(
-                "write to unknown area 0x{:04x} value 0x{:02x}",
-                address, value
-            ),
+            _ => {}
+           // _ => println!(
+           //     "write to unknown area 0x{:04x} value 0x{:02x}",
+           //     address, value
+           // ),
         };
     }
 }

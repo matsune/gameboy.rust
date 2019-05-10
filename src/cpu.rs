@@ -106,17 +106,12 @@ impl CPU {
         }
         self.ime = false;
 
-        if is_bit_on(fired, 0) {
-            let mut f = mmu.interrupt_flag.get();
-            set_bit(&mut f, 0, false);
-            mmu.interrupt_flag = InterruptFlag::from(f);
-            self.ime = false;
-            self.push(mmu, self.reg.pc);
-            self.reg.pc = 0x0040;
-            12
-        } else {
-            unimplemented!("interrupt")
-        }
+        let n = fired.trailing_zeros();
+        let int_f = int_f & !(1 << n);
+        mmu.interrupt_flag = InterruptFlag::from(int_f);
+        self.push(mmu, self.reg.pc);
+        self.reg.pc = 0x40 | ((n as u16) << 3);
+        4
     }
 
     fn push(&mut self, mmu: &mut MMU, word: u16) {

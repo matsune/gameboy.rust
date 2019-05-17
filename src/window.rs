@@ -18,7 +18,7 @@ impl Default for Window {
         let h = u32::from(PIXELS_H);
         let events_loop = glutin::EventsLoop::new();
         let window = glutin::WindowBuilder::new()
-            .with_dimensions((w * INIT_WINDOW_SCALE, h * INIT_WINDOW_SCALE).into());
+            .with_dimensions((w / INIT_WINDOW_SCALE, h / INIT_WINDOW_SCALE).into());
         let context = glutin::ContextBuilder::new();
         let display = glium::Display::new(window, context, &events_loop).unwrap();
         let texture = Texture2d::empty_with_format(

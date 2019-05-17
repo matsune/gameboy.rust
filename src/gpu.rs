@@ -78,14 +78,12 @@ pub struct GPU {
     mode: Mode,
     cycles: usize,
     oam: RAM,
-    lcdc: LCDC, // 0xff40
-    stat: u8,   // 0xff41
-    scy: u8,    // 0xff42
-    scx: u8,    // 0xff43
-    line: u8,   // 0xff44
-    lyc: u8,    // 0xff45
-    // TODO: dma
-    dma: u8,        // 0xff46
+    lcdc: LCDC,     // 0xff40
+    stat: u8,       // 0xff41
+    scy: u8,        // 0xff42
+    scx: u8,        // 0xff43
+    line: u8,       // 0xff44
+    lyc: u8,        // 0xff45
     bg_palette: u8, // 0xff47
     obp_0: u8,      // 0xff48
     obp_1: u8,      // 0xff49
@@ -95,8 +93,8 @@ pub struct GPU {
     bgprio: [BgPrio; PIXELS_W as usize],
 }
 
-impl GPU {
-    pub fn new() -> Self {
+impl Default for GPU {
+    fn default() -> Self {
         GPU {
             vram: RAM::new(0x8000, 0x2000),
             lcdc: LCDC::default(),
@@ -109,7 +107,6 @@ impl GPU {
             line: 0,
             lyc: 0,
             bg_palette: 0,
-            dma: 0,
             obp_0: 0x00,
             obp_1: 0x01,
             wy: 0,
@@ -118,7 +115,9 @@ impl GPU {
             bgprio: [BgPrio::Color0; PIXELS_W as usize],
         }
     }
+}
 
+impl GPU {
     pub fn tick(&mut self, cycles: usize, interrupt_flag: &mut InterruptFlag) -> bool {
         let mut redraw = false;
         if cycles == 0 {
@@ -228,7 +227,7 @@ impl GPU {
     fn reset_window(&mut self) {
         for i in 0..PIXELS_W {
             let offset = usize::from(PIXELS_W) * 3 * usize::from(self.line) + i as usize * 3;
-            self.data[offset + 0] = 0xff;
+            self.data[offset] = 0xff;
             self.data[offset + 1] = 0xff;
             self.data[offset + 2] = 0xff;
         }
@@ -270,8 +269,8 @@ impl GPU {
         for index in 0..40 {
             let i = 39 - index;
             let address = 0xfe00 + 0x04 * i;
-            let pos_y = self.read(address + 0) as u16 as i32 - 16;
-            let pos_x = self.read(address + 1) as u16 as i32 - 8;
+            let pos_y = i32::from(u16::from(self.read(address + 0))) - 16;
+            let pos_x = i32::from(u16::from(self.read(address + 1))) - 8;
             let is_8x16_size = self.lcdc.sprite_size();
             let pattern_id = self.read(address + 2) & (if is_8x16_size { 0xfe } else { 0xff });
             let flags = self.read(address + 3);
@@ -280,11 +279,11 @@ impl GPU {
             let is_flip_x = is_bit_on(flags, 5);
             let is_obp1 = is_bit_on(flags, 4);
             let sprite_height = if is_8x16_size { 16 } else { 8 };
-            let line = self.line as i32;
+            let line = i32::from(self.line);
             if line < pos_y || line >= pos_y + sprite_height {
                 continue;
             }
-            if pos_x < -7 || pos_x >= PIXELS_W as i32 + 7 {
+            if pos_x < -7 || pos_x >= i32::from(PIXELS_W) + 7 {
                 continue;
             }
             let tile_y = if is_flip_y {
@@ -292,13 +291,13 @@ impl GPU {
             } else {
                 line - pos_y
             } as u16;
-            let tile_address = 0x8000 + pattern_id as u16 * 0x10 + tile_y * 2;
+            let tile_address = 0x8000 + u16::from(pattern_id) * 0x10 + tile_y * 2;
             let (b1, b2) = (
                 self.vram.read(tile_address),
                 self.vram.read(tile_address + 1),
             );
             for x in 0..8 {
-                if pos_x + x < 0 || pos_x + x >= PIXELS_W as i32 {
+                if pos_x + x < 0 || pos_x + x >= i32::from(PIXELS_W) {
                     continue;
                 }
                 let x_bit = 1 << (if is_flip_x { x } else { 7 - x });
@@ -317,7 +316,7 @@ impl GPU {
                 };
                 let canvas_offset =
                     usize::from(PIXELS_W) * 3 * usize::from(self.line) + ((pos_x + x) * 3) as usize;
-                self.data[canvas_offset + 0] = color;
+                self.data[canvas_offset] = color;
                 self.data[canvas_offset + 1] = color;
                 self.data[canvas_offset + 2] = color;
             }

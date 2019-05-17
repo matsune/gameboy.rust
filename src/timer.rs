@@ -9,8 +9,8 @@ pub struct Timer {
     tac: u8,
 }
 
-impl Timer {
-    pub fn new() -> Self {
+impl Default for Timer {
+    fn default() -> Self {
         Self {
             div: Counter::new(16384),
             tima: Counter::new(4096),
@@ -18,11 +18,13 @@ impl Timer {
             tac: 0,
         }
     }
+}
 
+impl Timer {
     fn set_tima(&mut self) {
         match self.tma & 0b11 {
             0b00 => self.tima = Counter::new(4096),
-            0b01 => self.tima = Counter::new(262144),
+            0b01 => self.tima = Counter::new(262_144),
             0b10 => self.tima = Counter::new(65536),
             0b11 => self.tima = Counter::new(16384),
             _ => panic!(),
@@ -95,7 +97,7 @@ impl Counter {
 
     fn tick(&mut self) -> bool {
         self.clocks += 1;
-        if self.clocks == 4194304 / self.frequency {
+        if self.clocks == 4_194_304 / self.frequency {
             self.clocks = 0;
             self.counter = self.counter.wrapping_add(1);
             true

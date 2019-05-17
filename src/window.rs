@@ -12,8 +12,8 @@ pub struct Window {
     texture: Texture2d,
 }
 
-impl Window {
-    pub fn new() -> Self {
+impl Default for Window {
+    fn default() -> Self {
         let w = u32::from(PIXELS_W);
         let h = u32::from(PIXELS_H);
         let events_loop = glutin::EventsLoop::new();
@@ -35,7 +35,9 @@ impl Window {
             texture,
         }
     }
+}
 
+impl Window {
     pub fn draw(&self, data: Vec<u8>) {
         let w = u32::from(PIXELS_W);
         let h = u32::from(PIXELS_H);

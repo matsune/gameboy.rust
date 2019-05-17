@@ -54,9 +54,9 @@ impl MMU {
             wram_bank: 0x01,
             hram: RAM::new(0xff80, 0x7f),
             serial: Serial::default(),
-            timer: Timer::new(),
-            joypad: Joypad::new(),
-            gpu: GPU::new(),
+            timer: Timer::default(),
+            joypad: Joypad::default(),
+            gpu: GPU::default(),
             interrupt_flag: InterruptFlag::from(0),
             interrupt_enable: 0,
         }
@@ -131,7 +131,7 @@ impl Memory for MMU {
             0xff0f => self.interrupt_flag = InterruptFlag::from(value),
             0xff10...0xff3f => {} // TODO: sound
             0xff46 => {
-                let base = (value as u16) << 8;
+                let base = u16::from(value) << 8;
                 for i in 0..0xa0 {
                     let b = self.read(base + i);
                     self.write(0xfe00 + i, b);

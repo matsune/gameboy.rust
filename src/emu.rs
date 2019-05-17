@@ -13,8 +13,8 @@ fn run_cpu_thread(
 ) {
     'main: loop {
         if gameboy.tick() {
-            let data = gameboy.mmu.gpu.data.clone();
-            if data_tx.send(data.to_vec()).is_err() {
+            let data = gameboy.mmu.gpu.data.to_vec();
+            if data_tx.send(data).is_err() {
                 break 'main;
             }
         }
@@ -40,7 +40,7 @@ pub fn run(data: Vec<u8>, skip_boot: bool) {
     let gameboy = Gameboy::new(Cartridge::new(data, skip_boot));
     let cpu_thread = thread::spawn(move || run_cpu_thread(gameboy, data_tx, key_rx));
 
-    let mut window = Window::new();
+    let mut window = Window::default();
     let mut closed = false;
     while !closed {
         if let Ok(data) = data_rx.try_recv() {
@@ -49,10 +49,7 @@ pub fn run(data: Vec<u8>, skip_boot: bool) {
         match data_rx.try_recv() {
             Ok(data) => window.draw(data),
             Err(err) => match err {
-                TryRecvError::Disconnected => {
-                    closed = true;
-                    break;
-                }
+                TryRecvError::Disconnected => break,
                 TryRecvError::Empty => {}
             },
         }

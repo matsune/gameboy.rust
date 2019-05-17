@@ -177,7 +177,7 @@ impl Memory for RomOnly {
         }
     }
 
-    fn write(&mut self, address: u16, value: u8) {}
+    fn write(&mut self, _address: u16, _value: u8) {}
 }
 
 fn get_rom_banks(hex: u8) -> u16 {

@@ -3,7 +3,7 @@ use crate::mmu::{InterruptFlag, InterruptType};
 use crate::util::is_bit_on;
 
 pub enum JoypadKey {
-    Right = 1 << 0,
+    Right = 1,
     Left = 1 << 1,
     Up = 1 << 2,
     Down = 1 << 3,
@@ -18,14 +18,16 @@ pub struct Joypad {
     matrix: u8,
 }
 
-impl Joypad {
-    pub fn new() -> Self {
+impl Default for Joypad {
+    fn default() -> Self {
         Joypad {
             p1: 0,
             matrix: 0xff,
         }
     }
+}
 
+impl Joypad {
     pub fn keydown(&mut self, interrupt_flag: &mut InterruptFlag, key: JoypadKey) {
         self.matrix &= !(key as u8);
         interrupt_flag.set_flag(InterruptType::P10P13);

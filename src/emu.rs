@@ -1,37 +1,43 @@
-use glium::glutin;
-use std::sync::mpsc::{channel, Receiver, Sender};
-use std::thread;
-
 use crate::cartridge::Cartridge;
 use crate::gb::Gameboy;
 use crate::joypad::JoypadKey;
 use crate::window::Window;
+use glium::glutin;
+use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
+use std::thread;
 
 fn run_cpu_thread(
     mut gameboy: Gameboy,
     data_tx: Sender<Vec<u8>>,
     key_rx: Receiver<(glutin::ElementState, JoypadKey)>,
 ) {
-    loop {
-        if let Ok((state, key)) = key_rx.try_recv() {
-            match state {
-                glutin::ElementState::Pressed => gameboy.mmu.keydown(key),
-                glutin::ElementState::Released => gameboy.mmu.keyup(key),
-            }
-        }
+    'main: loop {
         if gameboy.tick() {
             let data = gameboy.mmu.gpu.data.clone();
-            if data_tx.send(data).is_err() {
-                break;
+            if data_tx.send(data.to_vec()).is_err() {
+                break 'main;
+            }
+        }
+
+        'try_key: loop {
+            match key_rx.try_recv() {
+                Ok((state, key)) => match state {
+                    glutin::ElementState::Pressed => gameboy.mmu.keydown(key),
+                    glutin::ElementState::Released => gameboy.mmu.keyup(key),
+                },
+                Err(err) => match err {
+                    TryRecvError::Disconnected => break 'main,
+                    TryRecvError::Empty => break 'try_key,
+                },
             }
         }
     }
 }
 
-pub fn run(cartridge: Cartridge) {
+pub fn run(data: Vec<u8>, skip_boot: bool) {
     let (data_tx, data_rx) = channel();
     let (key_tx, key_rx) = channel();
-    let gameboy = Gameboy::new(cartridge);
+    let gameboy = Gameboy::new(Cartridge::new(data, skip_boot));
     let cpu_thread = thread::spawn(move || run_cpu_thread(gameboy, data_tx, key_rx));
 
     let mut window = Window::new();
@@ -40,71 +46,50 @@ pub fn run(cartridge: Cartridge) {
         if let Ok(data) = data_rx.try_recv() {
             window.draw(data);
         }
-
-        window.poll_events(|event| match event {
-            glutin::Event::WindowEvent { event, .. } => match event {
-                glutin::WindowEvent::CloseRequested => closed = true,
-                glutin::WindowEvent::KeyboardInput { input, .. } => match input.state {
-                    glutin::ElementState::Pressed => match input.virtual_keycode {
-                        Some(glutin::VirtualKeyCode::Up) => {
-                            key_tx.send((input.state, JoypadKey::Up));
-                        }
-                        Some(glutin::VirtualKeyCode::Down) => {
-                            key_tx.send((input.state, JoypadKey::Down));
-                        }
-                        Some(glutin::VirtualKeyCode::Left) => {
-                            key_tx.send((input.state, JoypadKey::Left));
-                        }
-                        Some(glutin::VirtualKeyCode::Right) => {
-                            key_tx.send((input.state, JoypadKey::Right));
-                        }
-                        Some(glutin::VirtualKeyCode::Return) => {
-                            key_tx.send((input.state, JoypadKey::Start));
-                        }
-                        Some(glutin::VirtualKeyCode::Space) => {
-                            key_tx.send((input.state, JoypadKey::Select));
-                        }
-                        Some(glutin::VirtualKeyCode::Z) => {
-                            key_tx.send((input.state, JoypadKey::A));
-                        }
-                        Some(glutin::VirtualKeyCode::X) => {
-                            key_tx.send((input.state, JoypadKey::B));
-                        }
-                        _ => (),
-                    },
-                    glutin::ElementState::Released => match input.virtual_keycode {
-                        Some(glutin::VirtualKeyCode::Up) => {
-                            key_tx.send((input.state, JoypadKey::Up));
-                        }
-                        Some(glutin::VirtualKeyCode::Down) => {
-                            key_tx.send((input.state, JoypadKey::Down));
-                        }
-                        Some(glutin::VirtualKeyCode::Left) => {
-                            key_tx.send((input.state, JoypadKey::Left));
-                        }
-                        Some(glutin::VirtualKeyCode::Right) => {
-                            key_tx.send((input.state, JoypadKey::Right));
-                        }
-                        Some(glutin::VirtualKeyCode::Return) => {
-                            key_tx.send((input.state, JoypadKey::Start));
-                        }
-                        Some(glutin::VirtualKeyCode::Space) => {
-                            key_tx.send((input.state, JoypadKey::Select));
-                        }
-                        Some(glutin::VirtualKeyCode::Z) => {
-                            key_tx.send((input.state, JoypadKey::A));
-                        }
-                        Some(glutin::VirtualKeyCode::X) => {
-                            key_tx.send((input.state, JoypadKey::B));
-                        }
-                        _ => (),
-                    },
-                },
-                _ => (),
+        match data_rx.try_recv() {
+            Ok(data) => window.draw(data),
+            Err(err) => match err {
+                TryRecvError::Disconnected => {
+                    closed = true;
+                    break;
+                }
+                TryRecvError::Empty => {}
             },
-            _ => (),
+        }
+
+        window.poll_events(|event| {
+            closed = match event {
+                glutin::Event::WindowEvent { event, .. } => match event {
+                    glutin::WindowEvent::CloseRequested => true,
+                    glutin::WindowEvent::KeyboardInput { input, .. } => {
+                        match input.virtual_keycode {
+                            Some(key) => match get_joypad_key(key) {
+                                Some(key) => key_tx.send((input.state, key)).is_err(),
+                                None => false,
+                            },
+                            None => false,
+                        }
+                    }
+                    _ => false,
+                },
+                _ => false,
+            }
         });
     }
     drop(data_rx);
     cpu_thread.join().unwrap();
+}
+
+fn get_joypad_key(key: glutin::VirtualKeyCode) -> Option<JoypadKey> {
+    match key {
+        glutin::VirtualKeyCode::Up => Some(JoypadKey::Up),
+        glutin::VirtualKeyCode::Down => Some(JoypadKey::Down),
+        glutin::VirtualKeyCode::Left => Some(JoypadKey::Left),
+        glutin::VirtualKeyCode::Right => Some(JoypadKey::Right),
+        glutin::VirtualKeyCode::Return => Some(JoypadKey::Start),
+        glutin::VirtualKeyCode::Space => Some(JoypadKey::Select),
+        glutin::VirtualKeyCode::Z => Some(JoypadKey::A),
+        glutin::VirtualKeyCode::X => Some(JoypadKey::B),
+        _ => None,
+    }
 }

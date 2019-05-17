@@ -4,7 +4,7 @@ use glium::{glutin, Surface};
 
 use crate::gpu::{PIXELS_H, PIXELS_W};
 
-const INIT_WINDOW_SCALE: u32 = 3;
+const INIT_WINDOW_SCALE: u32 = 2;
 
 pub struct Window {
     events_loop: glutin::EventsLoop,

@@ -41,9 +41,3 @@ impl Memory for RAM {
         self.memory[usize::from(address - self.offset)] = value;
     }
 }
-
-impl std::fmt::Debug for RAM {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "RAM {{ offset: {}, size: {} }}", self.offset, self.size)
-    }
-}

@@ -1,23 +1,7 @@
+use clap::{App, Arg};
+use gameboy::emu;
 use std::fs::File;
 use std::io::Read;
-
-extern crate clap;
-use clap::{App, Arg};
-extern crate glium;
-
-mod cartridge;
-mod cpu;
-mod emu;
-mod gb;
-mod gpu;
-mod joypad;
-mod memory;
-mod mmu;
-mod reg;
-mod serial;
-mod timer;
-mod util;
-mod window;
 
 fn main() {
     let matches = App::new("gameboy.rust")
@@ -34,5 +18,5 @@ fn main() {
     let mut data = Vec::new();
     file.read_to_end(&mut data).unwrap();
 
-    emu::run(cartridge::Cartridge::new(data));
+    emu::run(data, false);
 }

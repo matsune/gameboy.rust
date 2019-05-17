@@ -38,7 +38,6 @@ pub struct MMU {
     wram: RAM,
     wram_bank: u8,
     hram: RAM,
-    oam: RAM,
     serial: Serial,
     timer: Timer,
     joypad: Joypad,
@@ -52,9 +51,8 @@ impl MMU {
         Self {
             cartridge,
             wram: RAM::new(0xc000, 0x8000),
-            wram_bank: 0,
+            wram_bank: 0x01,
             hram: RAM::new(0xff80, 0x7f),
-            oam: RAM::new(0xfe00, 0xa0),
             serial: Serial::default(),
             timer: Timer::new(),
             joypad: Joypad::new(),
@@ -85,20 +83,20 @@ impl Memory for MMU {
             0x8000...0x9fff => self.gpu.read(address),
             0xa000...0xbfff => self.cartridge.read(address),
             0xc000...0xcfff => self.wram.read(address),
-            0xd000...0xdfff => self.wram.read(address + u16::from(self.wram_bank) * 0x1000),
+            0xd000...0xdfff => self
+                .wram
+                .read(address - 0x1000 + u16::from(self.wram_bank) * 0x1000),
             0xe000...0xefff => self.wram.read(address - 0x2000),
             0xf000...0xfdff => self
                 .wram
-                .read(address - 0x2000 + u16::from(self.wram_bank) * 0x1000),
-            0xfe00...0xfe9f => self.oam.read(address),
-            0xfea0...0xfeff => {
-                println!("read Unused area 0x{:04x}", address);
-                0
-            }
+                .read(address - 0x3000 + u16::from(self.wram_bank) * 0x1000),
+            0xfe00...0xfe9f => self.gpu.read(address),
             0xff00 => self.joypad.read(address),
             0xff01...0xff02 => self.serial.read(address),
             0xff04...0xff07 => self.timer.read(address),
             0xff0f => self.interrupt_flag.get(),
+            0xff10...0xff3f => 0, // sound
+            0xff46 => 0,          // TODO: speed
             0xff40...0xff4f => self.gpu.read(address),
             0xff50 => self.cartridge.read(address),
             0xff51...0xff55 => unimplemented!("hdma"),
@@ -121,21 +119,25 @@ impl Memory for MMU {
             0xc000...0xcfff => self.wram.write(address, value),
             0xd000...0xdfff => self
                 .wram
-                .write(address + u16::from(self.wram_bank) * 0x1000, value),
+                .write(address - 0x1000 + u16::from(self.wram_bank) * 0x1000, value),
             0xe000...0xefff => self.wram.write(address - 0x2000, value),
             0xf000...0xfdff => self
                 .wram
-                .write(address + u16::from(self.wram_bank) * 0x1000, value),
-            0xfe00...0xfe9f => self.oam.write(address, value),
-            0xfea0...0xfeff =>{}// println!(
-          //      "write to Unused area 0x{:04x} value 0x{:02x}",
-          //      address, value
-          //  ),
+                .write(address - 0x3000 + u16::from(self.wram_bank) * 0x1000, value),
+            0xfe00...0xfe9f => self.gpu.write(address, value),
             0xff00 => self.joypad.write(address, value),
             0xff01...0xff02 => self.serial.write(address, value),
             0xff04...0xff07 => self.timer.write(address, value),
             0xff0f => self.interrupt_flag = InterruptFlag::from(value),
-            0xff10...0xff3f => {} // sound
+            0xff10...0xff3f => {} // TODO: sound
+            0xff46 => {
+                let base = (value as u16) << 8;
+                for i in 0..0xa0 {
+                    let b = self.read(base + i);
+                    self.write(0xfe00 + i, b);
+                }
+            }
+            0xff4d => {} // TODO: shift
             0xff40...0xff4f => self.gpu.write(address, value),
             0xff50 => self.cartridge.write(address, value),
             0xff51...0xff55 => unimplemented!("hdma"),
@@ -149,10 +151,6 @@ impl Memory for MMU {
             0xff80...0xfffe => self.hram.write(address, value),
             0xffff => self.interrupt_enable = value,
             _ => {}
-           // _ => println!(
-           //     "write to unknown area 0x{:04x} value 0x{:02x}",
-           //     address, value
-           // ),
         };
     }
 }

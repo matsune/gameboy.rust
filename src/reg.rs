@@ -34,6 +34,21 @@ impl std::fmt::Debug for Registers {
 }
 
 impl Registers {
+    pub fn bootstrap() -> Self {
+        Registers {
+            a: 0x01,
+            f: 0xb0,
+            b: 0x00,
+            c: 0x13,
+            d: 0x00,
+            e: 0xd8,
+            h: 0x01,
+            l: 0x4d,
+            sp: 0xfffe,
+            pc: 0x0100,
+        }
+    }
+
     pub fn af(&self) -> u16 {
         u16::from(self.a) << 8 | u16::from(self.f)
     }
@@ -78,7 +93,7 @@ impl Registers {
 
     pub fn increment_hl(&mut self) -> u16 {
         let hl = self.hl();
-        self.set_hl((hl + 1) % 0xffff);
+        self.set_hl(hl.wrapping_add(1));
         hl
     }
 }

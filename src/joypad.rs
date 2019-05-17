@@ -20,7 +20,10 @@ pub struct Joypad {
 
 impl Joypad {
     pub fn new() -> Self {
-        Joypad { p1: 0, matrix: 0 }
+        Joypad {
+            p1: 0,
+            matrix: 0xff,
+        }
     }
 
     pub fn keydown(&mut self, interrupt_flag: &mut InterruptFlag, key: JoypadKey) {

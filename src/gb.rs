@@ -15,8 +15,8 @@ impl Gameboy {
         }
     }
 
-    pub fn tick(&mut self) -> bool {
-        let cycles = self.cpu.tick(&mut self.mmu) * 4;
-        self.mmu.tick(cycles)
+    pub fn tick(&mut self) {
+        let cycles = self.cpu.tick(&mut self.mmu);
+        self.mmu.tick(cycles * 4);
     }
 }

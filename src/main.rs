@@ -18,5 +18,5 @@ fn main() {
     let mut data = Vec::new();
     file.read_to_end(&mut data).unwrap();
 
-    emu::run(data, false);
+    emu::run(data, true);
 }

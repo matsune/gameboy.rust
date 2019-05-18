@@ -22,7 +22,7 @@ impl InterruptFlag {
         self.inner
     }
 
-    pub fn set_flag(&mut self, t: InterruptType) {
+    pub fn interrupt(&mut self, t: InterruptType) {
         self.inner |= 1 << t as u8;
     }
 }
@@ -62,9 +62,9 @@ impl MMU {
         }
     }
 
-    pub fn tick(&mut self, cycles: usize) -> bool {
+    pub fn tick(&mut self, cycles: usize) {
         self.timer.tick(&mut self.interrupt_flag);
-        self.gpu.tick(cycles, &mut self.interrupt_flag)
+        self.gpu.tick(cycles as u32, &mut self.interrupt_flag);
     }
 
     pub fn keydown(&mut self, key: JoypadKey) {

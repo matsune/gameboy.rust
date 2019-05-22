@@ -62,6 +62,10 @@ impl MMU {
         }
     }
 
+    pub fn title(&self) -> &str {
+        self.cartridge.title()
+    }
+
     pub fn tick(&mut self, cycles: usize) {
         self.timer.tick(&mut self.interrupt_flag);
         self.gpu.tick(cycles as u32, &mut self.interrupt_flag);

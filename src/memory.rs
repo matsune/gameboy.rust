@@ -19,7 +19,6 @@ pub trait Memory {
 pub struct RAM {
     pub memory: Vec<u8>,
     offset: u16,
-    size: u16,
 }
 
 impl RAM {
@@ -27,7 +26,6 @@ impl RAM {
         Self {
             memory: vec![0; usize::from(size)],
             offset,
-            size,
         }
     }
 }

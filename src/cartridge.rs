@@ -115,6 +115,7 @@ impl CartridgeType {
 pub trait MBC: Memory + Send {}
 
 pub struct Cartridge {
+    title: String,
     mbc: Box<MBC>,
     pub skip_boot: bool,
 }
@@ -123,6 +124,7 @@ impl Cartridge {
     pub fn new(data: Vec<u8>, skip_boot: bool) -> Self {
         let cart_type = CartridgeType::new(data[0x147]);
         println!("CartridgeType: {:?}", cart_type);
+        let title = read_title(&data);
         let mbc: Box<MBC> = if cart_type.is_mbc1() {
             Box::new(Mbc1::new(data))
         } else if cart_type.is_mbc2() {
@@ -134,8 +136,27 @@ impl Cartridge {
         } else {
             Box::new(RomOnly::new(data))
         };
-        Cartridge { mbc, skip_boot }
+        Cartridge {
+            title,
+            mbc,
+            skip_boot,
+        }
     }
+
+    pub fn title(&self) -> &str {
+        &self.title
+    }
+}
+
+fn read_title(data: &Vec<u8>) -> String {
+    let mut end = 0;
+    for i in 0x134..0x142 {
+        end = i;
+        if data[i] == 0 {
+            break;
+        }
+    }
+    String::from_utf8(data[0x134..end].to_vec()).unwrap_or("unknown".to_string())
 }
 
 impl Memory for Cartridge {

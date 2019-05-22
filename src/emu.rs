@@ -40,12 +40,13 @@ pub fn run(data: Vec<u8>, skip_boot: bool) {
     let (data_tx, data_rx) = channel();
     let (key_tx, key_rx) = channel();
     let gameboy = Gameboy::new(Cartridge::new(data, skip_boot));
+    let title = gameboy.mmu.title().to_owned();
     let cpu_thread = thread::Builder::new()
         .name("CPU thread".to_string())
         .spawn(move || run_cpu_thread(gameboy, data_tx, key_rx))
         .unwrap();
 
-    let mut window = Window::default();
+    let mut window = Window::new(title);
     let mut closed = false;
     while !closed {
         if let Ok(data) = data_rx.try_recv() {

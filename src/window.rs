@@ -12,12 +12,13 @@ pub struct Window {
     texture: Texture2d,
 }
 
-impl Default for Window {
-    fn default() -> Self {
+impl Window {
+    pub fn new(title: String) -> Self {
         let w = SCREEN_W as u32;
         let h = SCREEN_H as u32;
         let events_loop = glutin::EventsLoop::new();
         let window = glutin::WindowBuilder::new()
+            .with_title(title)
             .with_dimensions((w * INIT_WINDOW_SCALE as u32, h * INIT_WINDOW_SCALE as u32).into());
         let context = glutin::ContextBuilder::new();
         let display = glium::Display::new(window, context, &events_loop).unwrap();
@@ -35,9 +36,6 @@ impl Default for Window {
             texture,
         }
     }
-}
-
-impl Window {
     pub fn draw(&self, data: Vec<u8>) {
         let w = SCREEN_W as u32;
         let h = SCREEN_H as u32;

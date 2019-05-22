@@ -66,9 +66,9 @@ impl MMU {
         self.cartridge.title()
     }
 
-    pub fn tick(&mut self, cycles: usize) {
-        self.timer.tick(&mut self.interrupt_flag);
-        self.gpu.tick(cycles as u32, &mut self.interrupt_flag);
+    pub fn tick(&mut self, clocks: usize) {
+        self.timer.tick(clocks, &mut self.interrupt_flag);
+        self.gpu.tick(clocks, &mut self.interrupt_flag);
     }
 
     pub fn keydown(&mut self, key: JoypadKey) {
@@ -100,7 +100,7 @@ impl Memory for MMU {
             0xff04...0xff07 => self.timer.read(address),
             0xff0f => self.interrupt_flag.get(),
             0xff10...0xff3f => 0, // sound
-            0xff46 => 0,          // TODO: speed
+            0xff4d => 0,          // TODO: speed
             0xff40...0xff4f => self.gpu.read(address),
             0xff50 => self.cartridge.read(address),
             0xff51...0xff55 => unimplemented!("hdma"),
@@ -134,6 +134,7 @@ impl Memory for MMU {
             0xff04...0xff07 => self.timer.write(address, value),
             0xff0f => self.interrupt_flag = InterruptFlag::from(value),
             0xff10...0xff3f => {} // TODO: sound
+            0xff4d => {}          // TODO: shift
             0xff46 => {
                 let base = u16::from(value) << 8;
                 for i in 0..0xa0 {
@@ -141,7 +142,6 @@ impl Memory for MMU {
                     self.write(0xfe00 + i, b);
                 }
             }
-            0xff4d => {} // TODO: shift
             0xff40...0xff4f => self.gpu.write(address, value),
             0xff50 => self.cartridge.write(address, value),
             0xff51...0xff55 => unimplemented!("hdma"),

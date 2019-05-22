@@ -116,7 +116,7 @@ pub struct GPU {
     data: [[[u8; 3]; SCREEN_W]; SCREEN_H],
     pub redraw: bool,
     bgp: u8,
-    clocks: u32,
+    clocks: usize,
     lcdc: Lcdc,
     ly: u8,
     ly_compare: u8,
@@ -181,7 +181,7 @@ impl GPU {
         self.data[usize::from(self.ly)][x] = [g, g, g];
     }
 
-    pub fn tick(&mut self, clocks: u32, int_flag: &mut InterruptFlag) {
+    pub fn tick(&mut self, clocks: usize, int_flag: &mut InterruptFlag) {
         if !self.lcdc.lcd_enabled() {
             return;
         }
@@ -500,7 +500,7 @@ impl Memory for GPU {
             0xff49 => self.obp1,
             0xff4a => self.wy,
             0xff4b => self.wx,
-            _ => panic!("Unsupported address"),
+            _ => panic!("Unsupported address to read 0x{:04x}", a),
         }
     }
 
@@ -528,13 +528,12 @@ impl Memory for GPU {
             0xff43 => self.scx = v,
             0xff44 => {}
             0xff45 => self.ly_compare = v,
-            0xff46 => {}
             0xff47 => self.bgp = v,
             0xff48 => self.obp0 = v,
             0xff49 => self.obp1 = v,
             0xff4a => self.wy = v,
             0xff4b => self.wx = v,
-            _ => panic!("Unsupported address"),
+            _ => panic!("Unsupported address to write 0x{:04x}", a),
         }
     }
 }

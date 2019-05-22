@@ -37,7 +37,7 @@ impl Timer {
             let updated = self.tima.tick();
             if updated && self.tima.counter() == 0 {
                 self.tima.set_counter(self.tma);
-                interrupt_flag.set_flag(InterruptType::Timer);
+                interrupt_flag.interrupt(InterruptType::Timer);
             }
         }
     }

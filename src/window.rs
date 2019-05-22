@@ -2,9 +2,9 @@ use glium::texture::texture2d::Texture2d;
 use glium::texture::{ClientFormat, MipmapsOption, RawImage2d, UncompressedFloatFormat};
 use glium::{glutin, Surface};
 
-use crate::gpu::{PIXELS_H, PIXELS_W};
+use crate::gpu::{SCREEN_H, SCREEN_W};
 
-const INIT_WINDOW_SCALE: u32 = 2;
+const INIT_WINDOW_SCALE: usize = 1;
 
 pub struct Window {
     events_loop: glutin::EventsLoop,
@@ -14,11 +14,11 @@ pub struct Window {
 
 impl Default for Window {
     fn default() -> Self {
-        let w = u32::from(PIXELS_W);
-        let h = u32::from(PIXELS_H);
+        let w = SCREEN_W as u32;
+        let h = SCREEN_H as u32;
         let events_loop = glutin::EventsLoop::new();
         let window = glutin::WindowBuilder::new()
-            .with_dimensions((w / INIT_WINDOW_SCALE, h / INIT_WINDOW_SCALE).into());
+            .with_dimensions((w * INIT_WINDOW_SCALE as u32, h * INIT_WINDOW_SCALE as u32).into());
         let context = glutin::ContextBuilder::new();
         let display = glium::Display::new(window, context, &events_loop).unwrap();
         let texture = Texture2d::empty_with_format(
@@ -39,8 +39,8 @@ impl Default for Window {
 
 impl Window {
     pub fn draw(&self, data: Vec<u8>) {
-        let w = u32::from(PIXELS_W);
-        let h = u32::from(PIXELS_H);
+        let w = SCREEN_W as u32;
+        let h = SCREEN_H as u32;
         let rawimage2d = RawImage2d {
             data: std::borrow::Cow::Owned(data),
             width: w,

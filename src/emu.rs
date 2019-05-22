@@ -12,8 +12,10 @@ fn run_cpu_thread(
     key_rx: Receiver<(glutin::ElementState, JoypadKey)>,
 ) {
     'main: loop {
-        if gameboy.tick() {
-            let data = gameboy.mmu.gpu.data.to_vec();
+        gameboy.tick();
+        if gameboy.mmu.gpu.redraw {
+            gameboy.mmu.gpu.redraw = false;
+            let data = gameboy.mmu.gpu.get_rgb_data();
             if data_tx.send(data).is_err() {
                 break 'main;
             }
@@ -38,7 +40,10 @@ pub fn run(data: Vec<u8>, skip_boot: bool) {
     let (data_tx, data_rx) = channel();
     let (key_tx, key_rx) = channel();
     let gameboy = Gameboy::new(Cartridge::new(data, skip_boot));
-    let cpu_thread = thread::spawn(move || run_cpu_thread(gameboy, data_tx, key_rx));
+    let cpu_thread = thread::Builder::new()
+        .name("CPU thread".to_string())
+        .spawn(move || run_cpu_thread(gameboy, data_tx, key_rx))
+        .unwrap();
 
     let mut window = Window::default();
     let mut closed = false;

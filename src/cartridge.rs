@@ -122,6 +122,7 @@ pub struct Cartridge {
 impl Cartridge {
     pub fn new(data: Vec<u8>, skip_boot: bool) -> Self {
         let cart_type = CartridgeType::new(data[0x147]);
+        println!("CartridgeType: {:?}", cart_type);
         let mbc: Box<MBC> = if cart_type.is_mbc1() {
             Box::new(Mbc1::new(data))
         } else if cart_type.is_mbc2() {
@@ -180,202 +181,121 @@ impl Memory for RomOnly {
     fn write(&mut self, _address: u16, _value: u8) {}
 }
 
-fn get_rom_banks(hex: u8) -> u16 {
+fn rom_size(hex: u8) -> usize {
+    0x4000 // 16KB
+        * match hex {
+            0x00 => 2,
+            0x01 => 4,
+            0x02 => 8,
+            0x03 => 16,
+            0x04 => 32,
+            0x05 => 64,
+            0x06 => 128,
+            0x07 => 256,
+            0x08 => 512,
+            _ => 0,
+        }
+}
+
+fn ram_size(hex: u8) -> usize {
     match hex {
-        0x00 => 2,
-        0x01 => 4,
-        0x02 => 8,
-        0x03 => 16,
-        0x04 => 32,
-        0x05 => 64,
-        0x06 => 128,
-        0x07 => 256,
-        0x08 => 512,
+        0x01 => 0x0800,
+        0x02 => 0x2000,
+        0x03 => 0x2000 * 4,
+        0x04 => 0x2000 * 16,
+        0x05 => 0x2000 * 8,
         _ => 0,
     }
 }
 
-fn get_ram_banks_with_bank_size(hex: u8) -> (u8, u16) {
-    match hex {
-        0x00 => (0, 0),
-        0x01 => (1, 2048),
-        0x02 => (1, 0x2000),
-        0x03 => (4, 0x2000),
-        0x04 => (16, 0x2000),
-        0x05 => (8, 0x2000),
-        _ => (0, 0),
-    }
-}
-
-#[derive(Debug)]
-struct ExternalRam {
-    ram: Vec<u8>,
-    ram_banks: u8,
-    bank_size: u16, // 2KB or 8KB
-}
-
-impl ExternalRam {
-    fn new(ram_banks: u8, bank_size: u16) -> Self {
-        let ram_size = u16::from(ram_banks) * bank_size;
-        Self {
-            ram: vec![0xff; usize::from(ram_size)],
-            ram_banks,
-            bank_size,
-        }
-    }
-
-    fn get_index(&self, offset: u16) -> usize {
-        usize::from(u16::from(self.ram_banks) * self.bank_size + offset)
-    }
-
-    fn write(&mut self, offset: u16, value: u8) {
-        let idx = self.get_index(offset);
-        self.ram[idx] = value;
-    }
-
-    fn read(&self, offset: u16) -> u8 {
-        let idx = self.get_index(offset);
-        if idx < self.ram.len() {
-            self.ram[idx]
-        } else {
-            0xff
-        }
-    }
-
-    fn get_address(&self, bank: u8, offset: u16) -> u16 {
-        self.bank_size * u16::from(bank) + offset
-    }
-
-    fn save(&self) {
-        unimplemented!("save external ram")
-    }
-}
-
 #[derive(Eq, PartialEq)]
-enum Mode {
+enum BankMode {
     Rom,
     Ram,
 }
 
 pub struct Mbc1 {
-    memory: Vec<u8>,
-    rom_banks: u16,
-    selected_rom_bank: u16,
-    selected_ram_bank: u8,
-    mode: Mode,
+    rom: Vec<u8>,
+    rom_bank: u16,
+    ram: Vec<u8>,
+    ram_bank: u8,
     ram_enabled: bool,
-    ext_ram: ExternalRam,
+    bank_mode: BankMode,
 }
 
 impl Mbc1 {
-    pub fn new(memory: Vec<u8>) -> Self {
-        let rom_banks = get_rom_banks(memory[0x148]);
-        let (ram_banks, bank_size) = get_ram_banks_with_bank_size(memory[0x149]);
+    pub fn new(rom: Vec<u8>) -> Self {
+        let rom_size = rom_size(rom[0x148]);
+        let ram_size = ram_size(rom[0x149]);
+        assert!(rom_size >= rom.len());
         Self {
-            memory,
-            rom_banks,
-            selected_rom_bank: 1,
-            selected_ram_bank: 0,
-            mode: Mode::Rom,
-            ram_enabled: true,
-            ext_ram: ExternalRam::new(ram_banks, bank_size),
+            rom,
+            rom_bank: 1,
+            ram: vec![0u8; usize::from(ram_size)],
+            ram_bank: 0,
+            ram_enabled: false,
+            bank_mode: BankMode::Rom,
         }
     }
 
     fn save_ram(&self) {
         unimplemented!("save ram to battery");
     }
-
-    fn is_rom_mode(&self) -> bool {
-        self.mode == Mode::Rom
-    }
-
-    fn select_rom_bank(&mut self, bank: u16) {
-        self.selected_rom_bank = bank;
-    }
-
-    fn select_ram_bank(&mut self, bank: u8) {
-        self.selected_ram_bank = bank;
-    }
-
-    fn get_ram_address(&self, address: u16) -> usize {
-        usize::from(if self.is_rom_mode() {
-            address - 0xa000
-        } else {
-            self.ext_ram
-                .get_address(self.selected_ram_bank, address - 0xa000)
-        })
-    }
-
-    fn get_rom_byte(&self, bank: u16, address: u16) -> u8 {
-        let offset = usize::from(bank * 0x4000 + address);
-        if offset < self.memory.len() {
-            self.memory[offset]
-        } else {
-            0xff
-        }
-    }
 }
 
 impl Memory for Mbc1 {
     fn read(&self, address: u16) -> u8 {
         match address {
-            0x0000...0x3fff => self.get_rom_byte(0, address),
-            0x4000...0x7fff => self.get_rom_byte(self.selected_rom_bank, address),
+            0x0000...0x3fff => *self.rom.get(usize::from(address)).unwrap_or(&0),
+            0x4000...0x7fff => {
+                let a = usize::from(self.rom_bank) * 0x4000 + usize::from(address) - 0x4000;
+                *self.rom.get(a).unwrap_or(&0)
+            }
             0xa000...0xbfff => {
                 if self.ram_enabled {
-                    self.ext_ram.read(address - 0xa000)
+                    let bank = match self.bank_mode {
+                        BankMode::Rom => 0,
+                        BankMode::Ram => u16::from(self.ram_bank),
+                    };
+                    let a = bank * 0x2000 + address - 0xa000;
+                    *self.ram.get(usize::from(a)).unwrap_or(&0)
                 } else {
-                    0xff
+                    0
                 }
             }
-            _ => {
-                println!("invalid write address {}", address);
-                0xff
-            }
+            _ => 0,
         }
     }
 
     fn write(&mut self, address: u16, value: u8) {
         match address {
-            // Enable RAM
-            0x0000...0x1fff => {
-                self.ram_enabled = (value & 0x0f) == 0x0a;
-                if !self.ram_enabled {
-                    self.save_ram();
-                }
-            }
-            // Lower ROM Bank Number
+            0x0000...0x1fff => self.ram_enabled = (value & 0x0f) == 0x0a,
             0x2000...0x3fff => {
-                let upper = self.selected_rom_bank & 0b0110_0000;
-                let mut lower = u16::from(value) & 0b0001_1111;
-                if lower == 0 {
-                    lower = 1;
-                }
-                self.select_rom_bank(upper | lower);
+                let n = match value & 0x1f {
+                    0 => 1,
+                    n => n,
+                };
+                self.rom_bank = (self.rom_bank & 0xe0) | u16::from(n);
             }
-            // RAM Bank Number or Upper ROM Bank Number
-            0x4000...0x5fff => {
-                if self.is_rom_mode() {
-                    let lower = self.selected_rom_bank & 0b0001_1111;
-                    let upper = u16::from(value) & 0b0110_0000;
-                    self.select_rom_bank(upper | lower);
-                } else {
-                    self.select_ram_bank(value & 0b11);
-                }
-            }
-            // Select Banking mode
+            0x4000...0x5fff => match self.bank_mode {
+                BankMode::Rom => self.rom_bank = u16::from(value) & 0x60 | self.rom_bank & 0x1f,
+                BankMode::Ram => self.ram_bank = value & 0x03,
+            },
             0x6000...0x7fff => {
-                self.mode = if value & 0x01 == 0 {
-                    Mode::Rom
+                self.bank_mode = if value & 0x01 == 0 {
+                    BankMode::Rom
                 } else {
-                    Mode::Ram
+                    BankMode::Ram
                 };
             }
-            // Switchable RAM bank
             0xa000...0xbfff => {
                 if self.ram_enabled {
-                    self.ext_ram.write(address - 0xa000, value);
+                    let bank = match self.bank_mode {
+                        BankMode::Rom => 0,
+                        BankMode::Ram => u16::from(self.ram_bank),
+                    };
+                    let a = usize::from(bank) * 0x2000 + usize::from(address) - 0xa000;
+                    self.ram[a] = value;
                 }
             }
             _ => println!("invalid write address {}", address),

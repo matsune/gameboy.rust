@@ -30,7 +30,7 @@ impl Default for Joypad {
 impl Joypad {
     pub fn keydown(&mut self, interrupt_flag: &mut InterruptFlag, key: JoypadKey) {
         self.matrix &= !(key as u8);
-        interrupt_flag.set_flag(InterruptType::P10P13);
+        interrupt_flag.interrupt(InterruptType::P10P13);
     }
 
     pub fn keyup(&mut self, key: JoypadKey) {

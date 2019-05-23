@@ -1,4 +1,7 @@
 use crate::memory::Memory;
+use std::fs::{File, OpenOptions};
+use std::io::prelude::*;
+use std::path::PathBuf;
 
 const BOOT_ROM: [u8; 0x100] = [
     0x31, 0xFE, 0xFF, 0xAF, 0x21, 0xFF, 0x9F, 0x32, 0xCB, 0x7C, 0x20, 0xFB, 0x21, 0x26, 0xFF, 0x0E,
@@ -110,6 +113,26 @@ impl CartridgeType {
             _ => false,
         }
     }
+
+    pub fn has_battery(&self) -> bool {
+        match self {
+            CartridgeType::Mbc1RamBattery
+            | CartridgeType::Mbc2Battery
+            | CartridgeType::RomRamBattery
+            | CartridgeType::Mmm01SramBattery
+            | CartridgeType::Mbc3TimerBattery
+            | CartridgeType::Mbc3TimerRamBattery
+            | CartridgeType::Mbc3RamBattery
+            | CartridgeType::Mbc5RamBattery
+            | CartridgeType::Mbc5RumbleSramBattery => true,
+            _ => false,
+        }
+    }
+}
+
+trait Battery {
+    fn save_ram(&self);
+    fn load_ram(&mut self);
 }
 
 pub trait MBC: Memory + Send {}
@@ -121,12 +144,21 @@ pub struct Cartridge {
 }
 
 impl Cartridge {
-    pub fn new(data: Vec<u8>, skip_boot: bool) -> Self {
+    pub fn new(data: Vec<u8>, skip_boot: bool, save_path: Option<PathBuf>) -> Self {
         let cart_type = CartridgeType::new(data[0x147]);
         println!("CartridgeType: {:?}", cart_type);
         let title = read_title(&data);
+        let save_path = if cart_type.has_battery() {
+            if let Some(path) = save_path {
+                Option::Some(path)
+            } else {
+                Option::Some(title.clone().into())
+            }
+        } else {
+            Option::None
+        };
         let mbc: Box<MBC> = if cart_type.is_mbc1() {
-            Box::new(Mbc1::new(data))
+            Box::new(Mbc1::new(data, save_path))
         } else if cart_type.is_mbc2() {
             unimplemented!("mbc2")
         } else if cart_type.is_mbc3() {
@@ -242,25 +274,54 @@ pub struct Mbc1 {
     ram_bank: u8,
     ram_enabled: bool,
     bank_mode: BankMode,
+    save_path: Option<PathBuf>,
 }
 
 impl Mbc1 {
-    pub fn new(rom: Vec<u8>) -> Self {
+    pub fn new(rom: Vec<u8>, save_path: Option<PathBuf>) -> Self {
         let rom_size = rom_size(rom[0x148]);
         let ram_size = ram_size(rom[0x149]);
         assert!(rom_size >= rom.len());
-        Self {
+        let mut s = Self {
             rom,
             rom_bank: 1,
-            ram: vec![0u8; usize::from(ram_size)],
+            ram: vec![0u8; ram_size],
             ram_bank: 0,
             ram_enabled: false,
             bank_mode: BankMode::Rom,
+            save_path,
+        };
+        s.load_ram();
+        s
+    }
+}
+
+impl Battery for Mbc1 {
+    fn save_ram(&self) {
+        if let Some(save_path) = &self.save_path {
+            match OpenOptions::new()
+                .write(true)
+                .create(true)
+                .open(save_path)
+                .and_then(|mut f| f.write_all(&self.ram))
+            {
+                Ok(..) => println!("saved to {:?}", save_path),
+                Err(..) => println!("failed to save {:?}", save_path),
+            }
         }
     }
 
-    fn save_ram(&self) {
-        unimplemented!("save ram to battery");
+    fn load_ram(&mut self) {
+        if let Some(save_path) = &self.save_path {
+            let mut data = vec![];
+            match File::open(save_path).and_then(|mut f| f.read_to_end(&mut data)) {
+                Ok(..) => {
+                    println!("loaded {:?}", save_path);
+                    self.ram = data;
+                }
+                Err(..) => println!("failed to load {:?}", save_path),
+            }
+        }
     }
 }
 
@@ -290,7 +351,12 @@ impl Memory for Mbc1 {
 
     fn write(&mut self, address: u16, value: u8) {
         match address {
-            0x0000...0x1fff => self.ram_enabled = (value & 0x0f) == 0x0a,
+            0x0000...0x1fff => {
+                self.ram_enabled = (value & 0x0f) == 0x0a;
+                if self.ram_enabled {
+                    self.save_ram();
+                }
+            }
             0x2000...0x3fff => {
                 let n = match value & 0x1f {
                     0 => 1,

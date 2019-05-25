@@ -131,8 +131,34 @@ impl CartridgeType {
 }
 
 trait Battery {
-    fn save_ram(&self);
-    fn load_ram(&mut self);
+    fn save_path(&self) -> &Option<PathBuf>;
+    fn get_ram(&self) -> &Vec<u8>;
+
+    fn save_ram(&self) {
+        if let Some(save_path) = self.save_path() {
+            match OpenOptions::new()
+                .write(true)
+                .create(true)
+                .open(save_path)
+                .and_then(|mut f| f.write_all(self.get_ram()))
+            {
+                Ok(..) => println!("saved to {:?}", save_path),
+                Err(..) => println!("failed to save {:?}", save_path),
+            }
+        }
+    }
+}
+fn load_ram(save_path: &Option<PathBuf>) -> Option<Vec<u8>> {
+    match save_path {
+        Some(save_path) => {
+            let mut data = vec![];
+            match File::open(save_path).and_then(|mut f| f.read_to_end(&mut data)) {
+                Ok(..) => Some(data),
+                Err(..) => None,
+            }
+        }
+        None => None,
+    }
 }
 
 pub trait MBC: Memory + Send {}
@@ -144,16 +170,12 @@ pub struct Cartridge {
 }
 
 impl Cartridge {
-    pub fn new(data: Vec<u8>, skip_boot: bool, save_path: Option<PathBuf>) -> Self {
+    pub fn new(data: Vec<u8>, skip_boot: bool) -> Self {
         let cart_type = CartridgeType::new(data[0x147]);
         println!("CartridgeType: {:?}", cart_type);
         let title = read_title(&data);
         let save_path = if cart_type.has_battery() {
-            if let Some(path) = save_path {
-                Option::Some(path)
-            } else {
-                Option::Some(title.clone().into())
-            }
+            Option::Some(PathBuf::from(title.clone()).with_extension("sav"))
         } else {
             Option::None
         };
@@ -282,46 +304,29 @@ impl Mbc1 {
         let rom_size = rom_size(rom[0x148]);
         let ram_size = ram_size(rom[0x149]);
         assert!(rom_size >= rom.len());
-        let mut s = Self {
+        let ram = match load_ram(&save_path) {
+            Some(data) => data,
+            None => vec![0u8; ram_size],
+        };
+        Self {
             rom,
             rom_bank: 1,
-            ram: vec![0u8; ram_size],
+            ram,
             ram_bank: 0,
             ram_enabled: false,
             bank_mode: BankMode::Rom,
             save_path,
-        };
-        s.load_ram();
-        s
+        }
     }
 }
 
 impl Battery for Mbc1 {
-    fn save_ram(&self) {
-        if let Some(save_path) = &self.save_path {
-            match OpenOptions::new()
-                .write(true)
-                .create(true)
-                .open(save_path)
-                .and_then(|mut f| f.write_all(&self.ram))
-            {
-                Ok(..) => println!("saved to {:?}", save_path),
-                Err(..) => println!("failed to save {:?}", save_path),
-            }
-        }
+    fn save_path(&self) -> &Option<PathBuf> {
+        &self.save_path
     }
 
-    fn load_ram(&mut self) {
-        if let Some(save_path) = &self.save_path {
-            let mut data = vec![];
-            match File::open(save_path).and_then(|mut f| f.read_to_end(&mut data)) {
-                Ok(..) => {
-                    println!("loaded {:?}", save_path);
-                    self.ram = data;
-                }
-                Err(..) => println!("failed to load {:?}", save_path),
-            }
-        }
+    fn get_ram(&self) -> &Vec<u8> {
+        &self.ram
     }
 }
 
@@ -351,17 +356,13 @@ impl Memory for Mbc1 {
 
     fn write(&mut self, address: u16, value: u8) {
         match address {
-            0x0000...0x1fff => {
-                self.ram_enabled = (value & 0x0f) == 0x0a;
-                if self.ram_enabled {
-                    self.save_ram();
-                }
-            }
+            0x0000...0x1fff => self.ram_enabled = (value & 0x0f) == 0x0a,
             0x2000...0x3fff => {
                 let n = match value & 0x1f {
                     0 => 1,
                     n => n,
                 };
+                // TODO: ROM bank wraps around max bank number
                 self.rom_bank = (self.rom_bank & 0xe0) | u16::from(n);
             }
             0x4000...0x5fff => match self.bank_mode {
@@ -392,3 +393,9 @@ impl Memory for Mbc1 {
 
 impl MBC for RomOnly {}
 impl MBC for Mbc1 {}
+
+impl Drop for Mbc1 {
+    fn drop(&mut self) {
+        self.save_ram();
+    }
+}

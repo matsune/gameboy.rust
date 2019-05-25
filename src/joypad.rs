@@ -21,7 +21,7 @@ pub struct Joypad {
 impl Default for Joypad {
     fn default() -> Self {
         Joypad {
-            p1: 0,
+            p1: 0xcf,
             matrix: 0xff,
         }
     }

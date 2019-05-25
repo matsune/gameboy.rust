@@ -27,26 +27,44 @@ impl CPU {
     }
 }
 
-const OP_CYCLES: [usize; 0x100] = [
-    1, 3, 2, 2, 1, 1, 2, 1, 5, 2, 2, 2, 1, 1, 2, 1, 0, 3, 2, 2, 1, 1, 2, 1, 3, 2, 2, 2, 1, 1, 2, 1,
-    2, 3, 2, 2, 1, 1, 2, 1, 2, 2, 2, 2, 1, 1, 2, 1, 2, 3, 2, 2, 3, 3, 3, 1, 2, 2, 2, 2, 1, 1, 2, 1,
-    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1,
-    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 2, 2, 2, 2, 2, 2, 0, 2, 1, 1, 1, 1, 1, 1, 2, 1,
-    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1,
-    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1,
-    2, 3, 3, 4, 3, 4, 2, 4, 2, 4, 3, 0, 3, 6, 2, 4, 2, 3, 3, 0, 3, 4, 2, 4, 2, 4, 3, 0, 3, 0, 2, 4,
-    3, 3, 2, 0, 0, 4, 2, 4, 4, 1, 4, 0, 0, 0, 2, 4, 3, 3, 2, 1, 0, 4, 2, 4, 3, 2, 4, 1, 0, 0, 2, 4,
+//  0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+const OP_CYCLES: [usize; 256] = [
+    1, 3, 2, 2, 1, 1, 2, 1, 5, 2, 2, 2, 1, 1, 2, 1, // 0
+    0, 3, 2, 2, 1, 1, 2, 1, 3, 2, 2, 2, 1, 1, 2, 1, // 1
+    2, 3, 2, 2, 1, 1, 2, 1, 2, 2, 2, 2, 1, 1, 2, 1, // 2
+    2, 3, 2, 2, 3, 3, 3, 1, 2, 2, 2, 2, 1, 1, 2, 1, // 3
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, // 4
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, // 5
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, // 6
+    2, 2, 2, 2, 2, 2, 0, 2, 1, 1, 1, 1, 1, 1, 2, 1, // 7
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, // 8
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, // 9
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, // a
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, // b
+    2, 3, 3, 4, 3, 4, 2, 4, 2, 4, 3, 0, 3, 6, 2, 4, // c
+    2, 3, 3, 0, 3, 4, 2, 4, 2, 4, 3, 0, 3, 0, 2, 4, // d
+    3, 3, 2, 0, 0, 4, 2, 4, 4, 1, 4, 0, 0, 0, 2, 4, // e
+    3, 3, 2, 1, 0, 4, 2, 4, 3, 2, 4, 1, 0, 0, 2, 4, // f
 ];
 
-const CB_CYCLES: [usize; 0x100] = [
-    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
-    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
-    2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2,
-    2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2,
-    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
-    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
-    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
-    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
+//  0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+const CB_CYCLES: [usize; 256] = [
+    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0
+    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 1
+    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 2
+    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 3
+    2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2, // 4
+    2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2, // 5
+    2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2, // 6
+    2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2, // 7
+    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 8
+    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 9
+    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // A
+    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // B
+    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // C
+    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // D
+    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // E
+    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // F
 ];
 
 impl CPU {
@@ -108,6 +126,7 @@ impl CPU {
     fn command(&mut self, mem: &mut Memory) -> usize {
         let opcode = self.read_byte(mem);
         let mut cbcode: u8 = 0;
+        let mut internal_delay: usize = 0;
         match opcode {
             0x00 => {}
             0x01 => {
@@ -177,6 +196,7 @@ impl CPU {
             0x20 => {
                 if !self.reg.get_flag(Z) {
                     self.alu_jr(mem);
+                    internal_delay += 1;
                 } else {
                     self.reg.pc += 1;
                 }
@@ -201,6 +221,7 @@ impl CPU {
             0x28 => {
                 if self.reg.get_flag(Z) {
                     self.alu_jr(mem);
+                    internal_delay += 1;
                 } else {
                     self.reg.pc += 1;
                 }
@@ -222,6 +243,7 @@ impl CPU {
             0x30 => {
                 if !self.reg.get_flag(C) {
                     self.alu_jr(mem);
+                    internal_delay += 1;
                 } else {
                     self.reg.pc += 1;
                 }
@@ -255,6 +277,7 @@ impl CPU {
             0x38 => {
                 if self.reg.get_flag(C) {
                     self.alu_jr(mem);
+                    internal_delay += 1;
                 } else {
                     self.reg.pc += 1;
                 }
@@ -404,6 +427,7 @@ impl CPU {
             0xc0 => {
                 if !self.reg.get_flag(Z) {
                     self.reg.pc = self.pop(mem);
+                    internal_delay += 3;
                 }
             }
             0xc1 => {
@@ -414,6 +438,7 @@ impl CPU {
                 let pc = self.read_word(mem);
                 if !self.reg.get_flag(Z) {
                     self.reg.pc = pc;
+                    internal_delay += 1;
                 }
             }
             0xc3 => self.reg.pc = mem.read_word(self.reg.pc),
@@ -421,6 +446,7 @@ impl CPU {
                 if !self.reg.get_flag(Z) {
                     self.push(mem, self.reg.pc + 2);
                     self.reg.pc = mem.read_word(self.reg.pc);
+                    internal_delay += 3;
                 } else {
                     self.reg.pc += 2;
                 }
@@ -437,6 +463,7 @@ impl CPU {
             0xc8 => {
                 if self.reg.get_flag(Z) {
                     self.reg.pc = self.pop(mem);
+                    internal_delay += 3;
                 }
             }
             0xc9 => {
@@ -446,6 +473,7 @@ impl CPU {
                 let pc = self.read_word(mem);
                 if self.reg.get_flag(Z) {
                     self.reg.pc = pc;
+                    internal_delay += 1;
                 }
             }
             0xcb => {
@@ -457,6 +485,7 @@ impl CPU {
                 if self.reg.get_flag(Z) {
                     self.push(mem, self.reg.pc + 2);
                     self.reg.pc = mem.read_word(self.reg.pc);
+                    internal_delay += 3;
                 } else {
                     self.reg.pc += 2;
                 }
@@ -476,6 +505,7 @@ impl CPU {
             0xd0 => {
                 if !self.reg.get_flag(C) {
                     self.reg.pc = self.pop(mem);
+                    internal_delay += 3;
                 }
             }
             0xd1 => {
@@ -486,6 +516,7 @@ impl CPU {
                 let pc = self.read_word(mem);
                 if !self.reg.get_flag(C) {
                     self.reg.pc = pc;
+                    internal_delay += 1;
                 }
             }
             0xd3 => panic!("Opcode 0xd3"),
@@ -493,6 +524,7 @@ impl CPU {
                 if !self.reg.get_flag(C) {
                     self.push(mem, self.reg.pc + 2);
                     self.reg.pc = mem.read_word(self.reg.pc);
+                    internal_delay += 3;
                 } else {
                     self.reg.pc += 2;
                 }
@@ -509,6 +541,7 @@ impl CPU {
             0xd8 => {
                 if self.reg.get_flag(C) {
                     self.reg.pc = self.pop(mem);
+                    internal_delay += 3;
                 }
             }
             0xd9 => {
@@ -519,6 +552,7 @@ impl CPU {
                 let pc = self.read_word(mem);
                 if self.reg.get_flag(C) {
                     self.reg.pc = pc;
+                    internal_delay += 1;
                 }
             }
             0xdb => panic!("Opcode 0xdb"),
@@ -526,6 +560,7 @@ impl CPU {
                 if self.reg.get_flag(C) {
                     self.push(mem, self.reg.pc + 2);
                     self.reg.pc = mem.read_word(self.reg.pc);
+                    internal_delay += 3;
                 } else {
                     self.reg.pc += 2;
                 }
@@ -585,7 +620,10 @@ impl CPU {
                 self.reg.set_af(v);
             }
             0xf2 => self.reg.a = mem.read(0xff00 | u16::from(self.reg.c)),
-            0xf3 => self.di = 2,
+            0xf3 => {
+                // TODO: CGB/GBA: self.di = 2
+                self.di = 1;
+            }
             0xf4 => panic!("Opcode 0xf4"),
             0xf5 => self.push(mem, self.reg.af()),
             0xf6 => {
@@ -622,10 +660,10 @@ impl CPU {
                 self.reg.pc = 0x38;
             }
         };
-        if cbcode != 0 {
+        if opcode == 0xcb {
             CB_CYCLES[cbcode as usize]
         } else {
-            OP_CYCLES[opcode as usize]
+            OP_CYCLES[opcode as usize] + internal_delay
         }
     }
 

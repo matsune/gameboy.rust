@@ -2,6 +2,7 @@ use crate::memory::Memory;
 use std::fs::{File, OpenOptions};
 use std::io::prelude::*;
 use std::path::PathBuf;
+use std::time::{Duration, SystemTime};
 
 const BOOT_ROM: [u8; 0x100] = [
     0x31, 0xFE, 0xFF, 0xAF, 0x21, 0xFF, 0x9F, 0x32, 0xCB, 0x7C, 0x20, 0xFB, 0x21, 0x26, 0xFF, 0x0E,
@@ -388,6 +389,140 @@ impl Memory for Mbc1 {
             _ => println!("invalid write address {}", address),
         };
     }
+}
+
+struct RealTimeClock {
+    clock_start: SystemTime,
+    latch_start: Option<SystemTime>,
+    halt: bool,
+    offset_sec: u64,
+    halt_seconds: u8,
+    halt_minutes: u8,
+    halt_hours: u8,
+    halt_days: u64,
+}
+
+impl Default for RealTimeClock {
+    fn default() -> Self {
+        Self {
+            clock_start: SystemTime::now(),
+            latch_start: None,
+            halt: false,
+            offset_sec: 0,
+            halt_seconds: 0,
+            halt_minutes: 0,
+            halt_hours: 0,
+            halt_days: 0,
+        }
+    }
+}
+
+impl RealTimeClock {
+    fn latch(&mut self) {
+        self.latch_start = Some(SystemTime::now());
+    }
+
+    fn unlatch(&mut self) {
+        self.latch_start = None;
+    }
+
+    fn clockTimeInSecs(&self) -> u64 {
+        let now = if let Some(latch) = self.latch_start {
+            latch
+        } else {
+            SystemTime::now()
+        };
+        let duration = now.duration_since(self.clock_start).unwrap();
+        duration.as_secs() + self.offset_sec
+    }
+
+    fn seconds(&self) -> u8 {
+        get_seconds(self.clockTimeInSecs())
+    }
+
+    fn minutes(&self) -> u8 {
+        get_minutes(self.clockTimeInSecs())
+    }
+
+    fn hours(&self) -> u8 {
+        get_hours(self.clockTimeInSecs())
+    }
+
+    fn days(&self) -> u64 {
+        get_days(self.clockTimeInSecs())
+    }
+
+    fn is_days_overflow(&self) -> bool {
+        self.clockTimeInSecs() >= 60 * 60 * 24 * 512
+    }
+
+    fn is_halt(&self) -> bool {
+        self.halt
+    }
+
+    fn set_seconds(&mut self, sec: u8) {
+        if !self.halt {
+            return;
+        }
+        self.halt_seconds = sec;
+    }
+
+    fn set_minutes(&mut self, min: u8) {
+        if !self.halt {
+            return;
+        }
+        self.halt_minutes = min;
+    }
+
+    fn set_hours(&mut self, h: u8) {
+        if !self.halt {
+            return;
+        }
+        self.halt_hours = h;
+    }
+
+    fn set_days(&mut self, days: u64) {
+        if !self.halt {
+            return;
+        }
+        self.halt_days = days;
+    }
+
+    fn set_halt(&mut self, halt: bool) {
+        if halt && !self.halt {
+            self.latch();
+            self.halt_seconds = self.seconds();
+            self.halt_minutes = self.minutes();
+            self.halt_hours = self.hours();
+            self.halt_days = self.days();
+        } else if !halt && self.halt {
+            self.offset_sec = u64::from(self.halt_seconds)
+                + u64::from(self.halt_minutes * 60)
+                + u64::from(self.halt_hours * 60 * 60)
+                + self.halt_days * 60 * 60 * 24;
+            self.clock_start = SystemTime::now();
+        }
+        self.halt = halt;
+    }
+
+    fn clear_days_overflow(&mut self) {
+        while self.is_days_overflow() {
+            self.offset_sec -= 60 * 60 * 24 * 512;
+        }
+    }
+}
+
+fn get_seconds(sec: u64) -> u8 {
+    (sec % 60) as u8
+}
+fn get_minutes(sec: u64) -> u8 {
+    ((sec % (60 * 60)) / 60) as u8
+}
+fn get_hours(sec: u64) -> u8 {
+    ((sec % (60 * 60 * 24)) / (60 * 60)) as u8
+}
+fn get_days(sec: u64) -> u64 {
+    (sec % (60 * 60 * 24 * 512)) / (60 * 60 * 24)
 }
 
 impl MBC for RomOnly {}

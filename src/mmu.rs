@@ -47,7 +47,7 @@ pub struct MMU {
 }
 
 impl MMU {
-    pub fn new(cartridge: Cartridge) -> Self {
+    pub fn new(cartridge: Cartridge, skip_boot: bool) -> Self {
         Self {
             cartridge,
             wram: RAM::new(0xc000, 0x8000),
@@ -56,7 +56,7 @@ impl MMU {
             serial: Serial::default(),
             timer: Timer::default(),
             joypad: Joypad::default(),
-            gpu: GPU::default(),
+            gpu: GPU::new(skip_boot),
             interrupt_flag: InterruptFlag::from(0),
             interrupt_enable: 0,
         }

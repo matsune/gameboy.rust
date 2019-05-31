@@ -8,10 +8,11 @@ pub struct Gameboy {
 }
 
 impl Gameboy {
-    pub fn new(cartridge: Cartridge) -> Self {
+    pub fn new(data: Vec<u8>, skip_boot: bool) -> Self {
+        let cartridge = Cartridge::new(data, skip_boot);
         Self {
-            cpu: CPU::new(cartridge.skip_boot),
-            mmu: MMU::new(cartridge),
+            cpu: CPU::new(skip_boot),
+            mmu: MMU::new(cartridge, skip_boot),
         }
     }
 

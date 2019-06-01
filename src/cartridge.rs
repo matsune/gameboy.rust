@@ -164,16 +164,40 @@ fn load_ram(save_path: &Option<PathBuf>) -> Option<Vec<u8>> {
 
 pub trait MBC: Memory + Send {}
 
+#[derive(Debug)]
+enum GBType {
+    Universal,
+    CGB,
+    NonCGB,
+}
+
+impl GBType {
+    fn new(n: u8) -> Self {
+        match n {
+            0x80 => GBType::Universal,
+            0xc0 => GBType::CGB,
+            _ => GBType::NonCGB,
+        }
+    }
+}
+
 pub struct Cartridge {
     title: String,
     mbc: Box<MBC>,
     skip_boot: bool,
+    pub is_gbc: bool,
 }
 
 impl Cartridge {
-    pub fn new(data: Vec<u8>, skip_boot: bool) -> Self {
+    pub fn new(data: Vec<u8>, skip_boot: bool, force_cgb: bool) -> Self {
+        let gb_type = GBType::new(data[0x143]);
+        let is_gbc = match gb_type {
+            GBType::NonCGB => false,
+            GBType::CGB => true,
+            GBType::Universal => force_cgb,
+        };
         let cart_type = CartridgeType::new(data[0x147]);
-        println!("CartridgeType: {:?}", cart_type);
+        println!("{:?} CartridgeType: {:?}", gb_type, cart_type);
         let title = read_title(&data);
         let save_path = if cart_type.has_battery() {
             Option::Some(PathBuf::from(title.clone()).with_extension("sav"))
@@ -195,6 +219,7 @@ impl Cartridge {
             title,
             mbc,
             skip_boot,
+            is_gbc,
         }
     }
 
@@ -685,6 +710,7 @@ impl Drop for Mbc1 {
 }
 impl Drop for Mbc3 {
     fn drop(&mut self) {
+        // TODO: timer save
         self.save_ram();
     }
 }

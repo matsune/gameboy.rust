@@ -12,11 +12,18 @@ fn main() {
                 .help("path to ROM file")
                 .required(true),
         )
+        .arg(
+            Arg::with_name("bootrom")
+                .short("b")
+                .long("bootrom")
+                .help("run bootrom"),
+        )
         .get_matches();
     let path = matches.value_of("file_path").unwrap();
     let mut file = File::open(path).unwrap();
     let mut data = Vec::new();
     file.read_to_end(&mut data).unwrap();
 
-    emu::run(data, true);
+    let bootrom = matches.is_present("bootrom");
+    emu::run(data, !bootrom);
 }

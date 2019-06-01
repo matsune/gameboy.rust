@@ -34,9 +34,9 @@ impl std::fmt::Debug for Registers {
 }
 
 impl Registers {
-    pub fn bootstrap() -> Self {
+    pub fn bootstrap(is_gbc: bool) -> Self {
         Registers {
-            a: 0x01,
+            a: if is_gbc { 0x11 } else { 0x01 },
             f: 0xb0,
             b: 0x00,
             c: 0x13,

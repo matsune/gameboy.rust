@@ -262,6 +262,35 @@ fn load_ram(save_path: &Option<PathBuf>) -> Option<Vec<u8>> {
     }
 }
 
+pub struct Battery2 {
+    sav_path: PathBuf,
+}
+
+impl Battery2 {
+    fn new(sav_path: PathBuf) -> Self {
+        Battery2 { sav_path }
+    }
+
+    fn load_ram(&self, size: usize) -> Vec<u8> {
+        match File::open(&self.sav_path) {
+            Ok(mut f) => {
+                let mut data = Vec::new();
+                f.read_to_end(&mut data).unwrap();
+                data
+            }
+            Err(_) => vec![0u8; size],
+        }
+    }
+
+    fn save_ram(&self, ram: &Vec<u8>) {
+        File::create(self.sav_path.clone())
+            .and_then(|mut f| f.write_all(ram))
+            .unwrap();
+        println!(">>wrote {:?}", ram);
+        println!(">>read {:?}", self.load_ram(8192));
+    }
+}
+
 trait MBC: Memory + Send {}
 
 pub struct Cartridge {
@@ -272,9 +301,10 @@ pub struct Cartridge {
 
 impl Cartridge {
     pub fn new<P: AsRef<Path>>(file_path: P, sav_path: Option<P>, skip_boot: bool) -> Self {
-        let mut file = File::open(file_path).unwrap();
+        let mut file = File::open(&file_path).unwrap();
         let mut data = Vec::new();
         file.read_to_end(&mut data).unwrap();
+
         let cart_type = CartridgeType::new(data[0x147]);
         println!("CartridgeType: {:?}", cart_type);
         let title = read_title(&data);
@@ -283,8 +313,21 @@ impl Cartridge {
         } else {
             Option::None
         };
+        let battery = if cart_type.is_battery() {
+            let sav_path = match sav_path {
+                Some(p) => p.as_ref().to_path_buf(),
+                None => file_path
+                    .as_ref()
+                    .with_file_name(&title)
+                    .with_extension("sav")
+                    .to_path_buf(),
+            };
+            Some(Battery2::new(sav_path))
+        } else {
+            None
+        };
         let mbc: Box<MBC> = if cart_type.is_mbc1() {
-            Box::new(Mbc1::new(data, save_path))
+            Box::new(Mbc1::new(data, battery))
         } else if cart_type.is_mbc2() {
             Box::new(Mbc2::new(data, save_path))
         } else if cart_type.is_mbc3() {

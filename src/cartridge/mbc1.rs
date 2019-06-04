@@ -1,6 +1,5 @@
-use super::{load_ram, ram_size, rom_size, Battery, MBC};
+use super::{ram_size, rom_size, Battery2, MBC};
 use crate::memory::Memory;
-use std::path::PathBuf;
 
 #[derive(Eq, PartialEq)]
 enum BankMode {
@@ -15,16 +14,16 @@ pub struct Mbc1 {
     ram_bank: u8,
     ram_enabled: bool,
     bank_mode: BankMode,
-    save_path: Option<PathBuf>,
+    battery: Option<Battery2>,
 }
 
 impl Mbc1 {
-    pub fn new(rom: Vec<u8>, save_path: Option<PathBuf>) -> Self {
+    pub fn new(rom: Vec<u8>, battery: Option<Battery2>) -> Self {
         let rom_size = rom_size(rom[0x148]);
         let ram_size = ram_size(rom[0x149]);
         assert!(rom_size >= rom.len());
-        let ram = match load_ram(&save_path) {
-            Some(data) => data,
+        let ram = match &battery {
+            Some(b) => b.load_ram(ram_size),
             None => vec![0u8; ram_size],
         };
         Self {
@@ -34,18 +33,8 @@ impl Mbc1 {
             ram_bank: 0,
             ram_enabled: false,
             bank_mode: BankMode::Rom,
-            save_path,
+            battery,
         }
-    }
-}
-
-impl Battery for Mbc1 {
-    fn save_path(&self) -> &Option<PathBuf> {
-        &self.save_path
-    }
-
-    fn get_ram(&self) -> &Vec<u8> {
-        &self.ram
     }
 }
 
@@ -114,6 +103,9 @@ impl MBC for Mbc1 {}
 
 impl Drop for Mbc1 {
     fn drop(&mut self) {
-        self.save_ram();
+        if let Some(battery) = &self.battery {
+            println!("<< {:?}", self.ram);
+            battery.save_ram(&self.ram);
+        }
     }
 }

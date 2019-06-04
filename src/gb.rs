@@ -1,6 +1,7 @@
 use crate::cartridge::Cartridge;
 use crate::cpu::CPU;
 use crate::mmu::MMU;
+use std::path::Path;
 
 pub struct Gameboy {
     pub cpu: CPU,
@@ -8,8 +9,8 @@ pub struct Gameboy {
 }
 
 impl Gameboy {
-    pub fn new(data: Vec<u8>, skip_boot: bool) -> Self {
-        let cartridge = Cartridge::new(data, skip_boot);
+    pub fn new<P: AsRef<Path>>(file_path: P, sav_path: Option<P>, skip_boot: bool) -> Self {
+        let cartridge = Cartridge::new(file_path, sav_path, skip_boot);
         Self {
             cpu: CPU::new(skip_boot),
             mmu: MMU::new(cartridge, skip_boot),

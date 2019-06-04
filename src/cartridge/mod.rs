@@ -12,7 +12,8 @@ use mbc5::Mbc5;
 use rom_only::RomOnly;
 use std::fs::{File, OpenOptions};
 use std::io::prelude::*;
-use std::path::PathBuf;
+use std::io::Read;
+use std::path::{Path, PathBuf};
 
 const BOOT_ROM: [u8; 0x100] = [
     0x31, 0xFE, 0xFF, 0xAF, 0x21, 0xFF, 0x9F, 0x32, 0xCB, 0x7C, 0x20, 0xFB, 0x21, 0x26, 0xFF, 0x0E,
@@ -270,11 +271,14 @@ pub struct Cartridge {
 }
 
 impl Cartridge {
-    pub fn new(data: Vec<u8>, skip_boot: bool) -> Self {
+    pub fn new<P: AsRef<Path>>(file_path: P, sav_path: Option<P>, skip_boot: bool) -> Self {
+        let mut file = File::open(file_path).unwrap();
+        let mut data = Vec::new();
+        file.read_to_end(&mut data).unwrap();
         let cart_type = CartridgeType::new(data[0x147]);
         println!("CartridgeType: {:?}", cart_type);
         let title = read_title(&data);
-        let save_path = if cart_type.has_battery() {
+        let save_path = if cart_type.is_battery() {
             Option::Some(PathBuf::from(title.clone()).with_extension("sav"))
         } else {
             Option::None

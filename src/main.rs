@@ -1,7 +1,5 @@
 use clap::{App, Arg};
-use gameboy::emu;
-use std::fs::File;
-use std::io::Read;
+use gameboy::emu::Emulator;
 
 fn main() {
     let matches = App::new("gameboy.rust")
@@ -12,11 +10,16 @@ fn main() {
                 .help("path to ROM file")
                 .required(true),
         )
+        .arg(
+            Arg::with_name("sav_path")
+                .short("s")
+                .long("sav")
+                .help("path to sav file")
+                .required(false),
+        )
         .get_matches();
-    let path = matches.value_of("file_path").unwrap();
-    let mut file = File::open(path).unwrap();
-    let mut data = Vec::new();
-    file.read_to_end(&mut data).unwrap();
+    let file_path = matches.value_of("file_path").unwrap();
+    let sav_path = matches.value_of("sav_path");
 
-    emu::run(data, true);
+    Emulator::new(file_path).sav_path(sav_path).run(true);
 }

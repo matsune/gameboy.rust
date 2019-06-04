@@ -8,6 +8,7 @@ pub const SCREEN_H: usize = 144;
 #[derive(PartialEq, Copy, Clone)]
 enum BgPrio {
     Color0,
+    PrioFlag,
     Normal,
 }
 
@@ -95,6 +96,7 @@ pub enum MonoColor {
 }
 
 pub struct GPU {
+    is_gbc: bool,
     pub blanked: bool,
     data: [[[u8; 3]; SCREEN_W]; SCREEN_H],
     pub redraw: bool,
@@ -106,7 +108,8 @@ pub struct GPU {
     oam: RAM,
     obp0: u8,
     obp1: u8,
-    vram: RAM,
+    ram: [[u8; 0x2000]; 0x02],
+    ram_bank: usize,
     scx: u8,
     scy: u8,
     stat: Stat,
@@ -116,13 +119,14 @@ pub struct GPU {
 }
 
 impl GPU {
-    pub fn new(skip_boot: bool) -> Self {
+    pub fn new(is_gbc: bool, skip_boot: bool) -> Self {
         let (lcdc, bgp) = if skip_boot {
             (Lcdc::from(0x91), 0xfc)
         } else {
             (Lcdc::from(0x48), 0x00)
         };
         Self {
+            is_gbc,
             blanked: false,
             data: [[[0xffu8; 3]; SCREEN_W]; SCREEN_H],
             redraw: false,
@@ -134,7 +138,8 @@ impl GPU {
             oam: RAM::new(0xfe00, 0xa0),
             obp0: 0xff,
             obp1: 0xff,
-            vram: RAM::new(0x8000, 0x2000),
+            ram: [[0u8; 0x2000]; 0x02],
+            ram_bank: 0,
             scx: 0x00,
             scy: 0x00,
             stat: Stat::default(),
@@ -288,19 +293,18 @@ impl GPU {
                 continue;
             };
 
-            let tilenr: u8 = self.vram.read(tilemapbase + tiley * 32 + tilex);
-
+            let tile_num = self.ram[0][usize::from(tilemapbase + tiley * 32 + tilex) - 0x8000];
             let tilebase = if self.lcdc.tileset() { 0x8000 } else { 0x8800 };
             let tileaddress = tilebase
                 + (if tilebase == 0x8000 {
-                    tilenr as u16
+                    tile_num as u16
                 } else {
-                    (tilenr as i8 as i16 + 128) as u16
+                    (tile_num as i8 as i16 + 128) as u16
                 }) * 16;
 
             let a0 = tileaddress + (pixely * 2);
 
-            let (b1, b2) = (self.vram.read(a0), self.vram.read(a0 + 1));
+            let (b1, b2) = (self.ram[1][a0 - 0x8000], self.ram[1][(a0 + 1) - 0x8000]);
 
             let xbit = 7 - pixelx as u32;
             let colnr = if b1 & (1 << xbit) != 0 { 1 } else { 0 }
@@ -334,6 +338,7 @@ impl GPU {
             let is_flip_y = is_bit_on(flags, 6);
             let is_flip_x = is_bit_on(flags, 5);
             let is_obp1 = is_bit_on(flags, 4);
+            let rambank_1 = is_bit_on(flags, 3);
             let sprite_height = if is_8x16 { 16 } else { 8 };
             let line = i32::from(self.ly);
             if line < pos_y || line >= pos_y + sprite_height {
@@ -348,11 +353,18 @@ impl GPU {
                 line - pos_y
             } as u16;
             let tile_address = 0x8000 + u16::from(pattern_id) * 0x10 + tile_y * 2;
-            let (b1, b2) = (
-                self.vram.read(tile_address),
-                self.vram.read(tile_address + 1),
-            );
-            for x in 0..8 {
+            let (b1, b2) = if rambank_1 && self.is_gbc {
+                (
+                    self.ram[1][usize::from(tile_address) - 0x8000],
+                    self.ram[1][usize::from(tile_address) + 1 - 0x8000],
+                )
+            } else {
+                (
+                    self.ram[0][usize::from(tile_address) - 0x8000],
+                    self.ram[0][usize::from(tile_address) + 1 - 0x8000],
+                )
+            };
+            'xloop: for x in 0..8 {
                 if pos_x + x < 0 || pos_x + x >= SCREEN_W as i32 {
                     continue;
                 }
@@ -362,15 +374,24 @@ impl GPU {
                 if c == 0 {
                     continue;
                 }
-                if below_bg && self.bg_prio[(pos_x + x) as usize] != BgPrio::Color0 {
-                    continue;
-                }
-                let color = if is_obp1 {
-                    Self::get_mono_color(self.obp1, c) as u8
+                if self.is_gbc {
+                    if self.lcdc.lcd_enabled()
+                        && (self.bg_prio[(pos_x + x) as usize] == BgPrio::PrioFlag
+                            || (below_bg && self.bg_prio[(pos_x + x) as usize] != BgPrio::Color0))
+                    {
+                        continue 'xloop;
+                    }
                 } else {
-                    Self::get_mono_color(self.obp0, c) as u8
-                };
-                self.set_mono_color((pos_x + x) as usize, color);
+                    if below_bg && self.bg_prio[(pos_x + x) as usize] != BgPrio::Color0 {
+                        continue 'xloop;
+                    }
+                    let color = if is_obp1 {
+                        Self::get_mono_color(self.obp1, c) as u8
+                    } else {
+                        Self::get_mono_color(self.obp0, c) as u8
+                    };
+                    self.set_mono_color((pos_x + x) as usize, color);
+                }
             }
         }
     }
@@ -379,7 +400,7 @@ impl GPU {
 impl Memory for GPU {
     fn read(&self, a: u16) -> u8 {
         match a {
-            0x8000...0x9fff => self.vram.read(a),
+            0x8000...0x9fff => self.ram[self.ram_bank][usize::from(a - 0x8000)],
             0xfe00...0xfe9f => self.oam.read(a),
             0xff40 => self.lcdc.get(),
             0xff41 => {
@@ -420,13 +441,14 @@ impl Memory for GPU {
             0xff49 => self.obp1,
             0xff4a => self.wy,
             0xff4b => self.wx,
+            0xff4f => self.ram_bank as u8,
             _ => panic!("Unsupported address to read 0x{:04x}", a),
         }
     }
 
     fn write(&mut self, a: u16, v: u8) {
         match a {
-            0x8000...0x9fff => self.vram.write(a, v),
+            0x8000...0x9fff => self.ram[self.ram_bank][usize::from(a - 0x8000)] = v,
             0xfe00...0xfe9f => self.oam.write(a, v),
             0xff40 => {
                 self.lcdc = v.into();
@@ -453,6 +475,7 @@ impl Memory for GPU {
             0xff49 => self.obp1 = v,
             0xff4a => self.wy = v,
             0xff4b => self.wx = v,
+            0xff4f => self.ram_bank = usize::from(v & 0x01),
             _ => panic!("Unsupported address to write 0x{:04x}", a),
         }
     }

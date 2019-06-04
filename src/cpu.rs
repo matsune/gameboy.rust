@@ -191,7 +191,7 @@ impl CPU {
             0x22 => {
                 let a = self.reg.hl();
                 mem.write(a, self.reg.a);
-                self.reg.set_hl(a + 1);
+                self.reg.set_hl(a.wrapping_add(1));
             }
             0x23 => {
                 let v = self.reg.hl().wrapping_add(1);

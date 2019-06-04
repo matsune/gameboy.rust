@@ -48,6 +48,7 @@ pub struct MMU {
 
 impl MMU {
     pub fn new(cartridge: Cartridge, skip_boot: bool) -> Self {
+        let is_gbc = cartridge.is_gbc;
         Self {
             cartridge,
             wram: RAM::new(0xc000, 0x8000),
@@ -56,7 +57,7 @@ impl MMU {
             serial: Serial::default(),
             timer: Timer::default(),
             joypad: Joypad::default(),
-            gpu: GPU::new(skip_boot),
+            gpu: GPU::new(is_gbc, skip_boot),
             interrupt_flag: InterruptFlag::from(0),
             interrupt_enable: 0,
         }

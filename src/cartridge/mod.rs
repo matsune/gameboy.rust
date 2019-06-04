@@ -1,10 +1,12 @@
 mod mbc1;
+mod mbc2;
 mod mbc3;
 mod mbc5;
 mod rom_only;
 
 use crate::memory::Memory;
 use mbc1::Mbc1;
+use mbc2::Mbc2;
 use mbc3::Mbc3;
 use mbc5::Mbc5;
 use rom_only::RomOnly;
@@ -54,7 +56,7 @@ fn rom_size(hex: u8) -> usize {
             0x06 => 128,
             0x07 => 256,
             0x08 => 512,
-            _ => 0,
+            _ => panic!("invalid rom size hex"),
         }
 }
 
@@ -65,12 +67,12 @@ fn ram_size(hex: u8) -> usize {
         0x03 => 0x2000 * 4,
         0x04 => 0x2000 * 16,
         0x05 => 0x2000 * 8,
-        _ => 0,
+        _ => panic!("invalid ram size hex"),
     }
 }
 
 #[derive(Debug)]
-pub enum CartridgeType {
+enum CartridgeType {
     RomOnly,
     Mbc1,
     Mbc1Ram,
@@ -96,7 +98,7 @@ pub enum CartridgeType {
 }
 
 impl CartridgeType {
-    pub fn new(n: u8) -> CartridgeType {
+    fn new(n: u8) -> CartridgeType {
         match n {
             0x00 => CartridgeType::RomOnly,
             0x01 => CartridgeType::Mbc1,
@@ -230,7 +232,7 @@ impl Cartridge {
         let mbc: Box<MBC> = if cart_type.is_mbc1() {
             Box::new(Mbc1::new(data, save_path))
         } else if cart_type.is_mbc2() {
-            unimplemented!("mbc2")
+            Box::new(Mbc2::new(data, save_path))
         } else if cart_type.is_mbc3() {
             Box::new(Mbc3::new(data, save_path))
         } else if cart_type.is_mbc5() {

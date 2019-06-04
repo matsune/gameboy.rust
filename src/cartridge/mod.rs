@@ -10,7 +10,7 @@ use mbc2::Mbc2;
 use mbc3::Mbc3;
 use mbc5::Mbc5;
 use rom_only::RomOnly;
-use std::fs::{File, OpenOptions};
+use std::fs::File;
 use std::io::prelude::*;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -230,45 +230,13 @@ impl CartridgeType {
     }
 }
 
-trait Battery {
-    fn save_path(&self) -> &Option<PathBuf>;
-    fn get_ram(&self) -> &Vec<u8>;
-
-    fn save_ram(&self) {
-        if let Some(save_path) = self.save_path() {
-            match OpenOptions::new()
-                .write(true)
-                .create(true)
-                .open(save_path)
-                .and_then(|mut f| f.write_all(self.get_ram()))
-            {
-                Ok(..) => println!("saved to {:?}", save_path),
-                Err(..) => println!("failed to save {:?}", save_path),
-            }
-        }
-    }
-}
-
-fn load_ram(save_path: &Option<PathBuf>) -> Option<Vec<u8>> {
-    match save_path {
-        Some(save_path) => {
-            let mut data = vec![];
-            match File::open(save_path).and_then(|mut f| f.read_to_end(&mut data)) {
-                Ok(..) => Some(data),
-                Err(..) => None,
-            }
-        }
-        None => None,
-    }
-}
-
-pub struct Battery2 {
+pub struct Battery {
     sav_path: PathBuf,
 }
 
-impl Battery2 {
+impl Battery {
     fn new(sav_path: PathBuf) -> Self {
-        Battery2 { sav_path }
+        Battery { sav_path }
     }
 
     fn load_ram(&self, size: usize) -> Vec<u8> {
@@ -286,8 +254,6 @@ impl Battery2 {
         File::create(self.sav_path.clone())
             .and_then(|mut f| f.write_all(ram))
             .unwrap();
-        println!(">>wrote {:?}", ram);
-        println!(">>read {:?}", self.load_ram(8192));
     }
 }
 
@@ -308,11 +274,6 @@ impl Cartridge {
         let cart_type = CartridgeType::new(data[0x147]);
         println!("CartridgeType: {:?}", cart_type);
         let title = read_title(&data);
-        let save_path = if cart_type.is_battery() {
-            Option::Some(PathBuf::from(title.clone()).with_extension("sav"))
-        } else {
-            Option::None
-        };
         let battery = if cart_type.is_battery() {
             let sav_path = match sav_path {
                 Some(p) => p.as_ref().to_path_buf(),
@@ -322,18 +283,18 @@ impl Cartridge {
                     .with_extension("sav")
                     .to_path_buf(),
             };
-            Some(Battery2::new(sav_path))
+            Some(Battery::new(sav_path))
         } else {
             None
         };
         let mbc: Box<MBC> = if cart_type.is_mbc1() {
             Box::new(Mbc1::new(data, battery))
         } else if cart_type.is_mbc2() {
-            Box::new(Mbc2::new(data, save_path))
+            Box::new(Mbc2::new(data, battery))
         } else if cart_type.is_mbc3() {
-            Box::new(Mbc3::new(data, save_path))
+            Box::new(Mbc3::new(data, battery))
         } else if cart_type.is_mbc5() {
-            Box::new(Mbc5::new(data, save_path))
+            Box::new(Mbc5::new(data, battery))
         } else {
             Box::new(RomOnly::new(data))
         };

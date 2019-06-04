@@ -1,6 +1,5 @@
-use super::{load_ram, ram_size, rom_size, Battery, MBC};
+use super::{ram_size, rom_size, Battery, MBC};
 use crate::memory::Memory;
-use std::path::PathBuf;
 use std::time::SystemTime;
 
 struct RealTimeClock {
@@ -150,18 +149,18 @@ pub struct Mbc3 {
     ram: Vec<u8>,
     ram_bank: u8, // 128 banks
     ram_enabled: bool,
-    save_path: Option<PathBuf>,
+    battery: Option<Battery>,
     rtc: RealTimeClock,
     latch_reg: u8,
 }
 
 impl Mbc3 {
-    pub fn new(rom: Vec<u8>, save_path: Option<PathBuf>) -> Self {
+    pub fn new(rom: Vec<u8>, battery: Option<Battery>) -> Self {
         let rom_size = rom_size(rom[0x148]);
         let ram_size = ram_size(rom[0x149]);
         assert!(rom_size >= rom.len());
-        let ram = match load_ram(&save_path) {
-            Some(data) => data,
+        let ram = match &battery {
+            Some(b) => b.load_ram(ram_size),
             None => vec![0u8; ram_size],
         };
         Self {
@@ -171,7 +170,7 @@ impl Mbc3 {
             ram_bank: 0,
             ram_enabled: false,
             rtc: RealTimeClock::default(),
-            save_path,
+            battery,
             latch_reg: 0xff,
         }
     }
@@ -216,16 +215,6 @@ impl Mbc3 {
             }
             _ => {}
         }
-    }
-}
-
-impl Battery for Mbc3 {
-    fn save_path(&self) -> &Option<PathBuf> {
-        &self.save_path
-    }
-
-    fn get_ram(&self) -> &Vec<u8> {
-        &self.ram
     }
 }
 
@@ -288,6 +277,8 @@ impl MBC for Mbc3 {}
 
 impl Drop for Mbc3 {
     fn drop(&mut self) {
-        self.save_ram();
+        if let Some(battery) = &self.battery {
+            battery.save_ram(&self.ram);
+        }
     }
 }

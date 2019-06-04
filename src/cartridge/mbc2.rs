@@ -1,22 +1,21 @@
-use super::{load_ram, rom_size, Battery, MBC};
+use super::{rom_size, Battery, MBC};
 use crate::memory::Memory;
-use std::path::PathBuf;
 
 pub struct Mbc2 {
     rom: Vec<u8>,
     rom_bank: u8,
     ram: Vec<u8>,
     ram_enabled: bool,
-    save_path: Option<PathBuf>,
+    battery: Option<Battery>,
 }
 
 impl Mbc2 {
-    pub fn new(rom: Vec<u8>, save_path: Option<PathBuf>) -> Self {
+    pub fn new(rom: Vec<u8>, battery: Option<Battery>) -> Self {
         let rom_size = rom_size(rom[0x148]);
         let ram_size = 512;
         assert!(rom_size >= rom.len());
-        let ram = match load_ram(&save_path) {
-            Some(data) => data,
+        let ram = match &battery {
+            Some(b) => b.load_ram(ram_size),
             None => vec![0u8; ram_size],
         };
         Self {
@@ -24,18 +23,8 @@ impl Mbc2 {
             rom_bank: 1,
             ram,
             ram_enabled: false,
-            save_path,
+            battery,
         }
-    }
-}
-
-impl Battery for Mbc2 {
-    fn save_path(&self) -> &Option<PathBuf> {
-        &self.save_path
-    }
-
-    fn get_ram(&self) -> &Vec<u8> {
-        &self.ram
     }
 }
 
@@ -84,6 +73,8 @@ impl MBC for Mbc2 {}
 
 impl Drop for Mbc2 {
     fn drop(&mut self) {
-        self.save_ram();
+        if let Some(battery) = &self.battery {
+            battery.save_ram(&self.ram);
+        }
     }
 }

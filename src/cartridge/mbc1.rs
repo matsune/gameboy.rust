@@ -1,4 +1,4 @@
-use super::{ram_size, rom_size, Battery2, MBC};
+use super::{ram_size, rom_size, Battery, MBC};
 use crate::memory::Memory;
 
 #[derive(Eq, PartialEq)]
@@ -14,11 +14,11 @@ pub struct Mbc1 {
     ram_bank: u8,
     ram_enabled: bool,
     bank_mode: BankMode,
-    battery: Option<Battery2>,
+    battery: Option<Battery>,
 }
 
 impl Mbc1 {
-    pub fn new(rom: Vec<u8>, battery: Option<Battery2>) -> Self {
+    pub fn new(rom: Vec<u8>, battery: Option<Battery>) -> Self {
         let rom_size = rom_size(rom[0x148]);
         let ram_size = ram_size(rom[0x149]);
         assert!(rom_size >= rom.len());
@@ -104,7 +104,6 @@ impl MBC for Mbc1 {}
 impl Drop for Mbc1 {
     fn drop(&mut self) {
         if let Some(battery) = &self.battery {
-            println!("<< {:?}", self.ram);
             battery.save_ram(&self.ram);
         }
     }

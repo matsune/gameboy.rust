@@ -126,21 +126,21 @@ impl CartridgeType {
         }
     }
 
-    pub fn is_mbc1(&self) -> bool {
+    fn is_mbc1(&self) -> bool {
         match self {
             CartridgeType::Mbc1 | CartridgeType::Mbc1Ram | CartridgeType::Mbc1RamBattery => true,
             _ => false,
         }
     }
 
-    pub fn is_mbc2(&self) -> bool {
+    fn is_mbc2(&self) -> bool {
         match self {
             CartridgeType::Mbc2 | CartridgeType::Mbc2Battery => true,
             _ => false,
         }
     }
 
-    pub fn is_mbc3(&self) -> bool {
+    fn is_mbc3(&self) -> bool {
         match self {
             CartridgeType::Mbc3TimerBattery
             | CartridgeType::Mbc3TimerRamBattery
@@ -151,7 +151,7 @@ impl CartridgeType {
         }
     }
 
-    pub fn is_mbc5(&self) -> bool {
+    fn is_mbc5(&self) -> bool {
         match self {
             CartridgeType::Mbc5
             | CartridgeType::Mbc5Ram
@@ -163,7 +163,16 @@ impl CartridgeType {
         }
     }
 
-    pub fn has_battery(&self) -> bool {
+    fn is_mmm01(&self) -> bool {
+        match self {
+            CartridgeType::Mmm01 | CartridgeType::Mmm01Sram | CartridgeType::Mmm01SramBattery => {
+                true
+            }
+            _ => false,
+        }
+    }
+
+    fn is_battery(&self) -> bool {
         match self {
             CartridgeType::Mbc1RamBattery
             | CartridgeType::Mbc2Battery
@@ -174,6 +183,47 @@ impl CartridgeType {
             | CartridgeType::Mbc3RamBattery
             | CartridgeType::Mbc5RamBattery
             | CartridgeType::Mbc5RumbleSramBattery => true,
+            _ => false,
+        }
+    }
+
+    fn is_ram(&self) -> bool {
+        match self {
+            CartridgeType::Mbc1Ram
+            | CartridgeType::Mbc1RamBattery
+            | CartridgeType::RomRam
+            | CartridgeType::RomRamBattery
+            | CartridgeType::Mbc3TimerRamBattery
+            | CartridgeType::Mbc3Ram
+            | CartridgeType::Mbc3RamBattery
+            | CartridgeType::Mbc5Ram
+            | CartridgeType::Mbc5RamBattery => true,
+            _ => false,
+        }
+    }
+
+    fn is_sram(&self) -> bool {
+        match self {
+            CartridgeType::Mmm01Sram
+            | CartridgeType::Mmm01SramBattery
+            | CartridgeType::Mbc5RumbleSram
+            | CartridgeType::Mbc5RumbleSramBattery => true,
+            _ => false,
+        }
+    }
+
+    fn is_rumble(&self) -> bool {
+        match self {
+            CartridgeType::Mbc5Rumble
+            | CartridgeType::Mbc5RumbleSram
+            | CartridgeType::Mbc5RumbleSramBattery => true,
+            _ => false,
+        }
+    }
+
+    fn is_timer(&self) -> bool {
+        match self {
+            CartridgeType::Mbc3TimerBattery | CartridgeType::Mbc3TimerRamBattery => true,
             _ => false,
         }
     }

@@ -1,4 +1,4 @@
-use super::{load_ram, ram_size, rom_size, Battery, MBC};
+use super::{load_ram, rom_size, Battery, MBC};
 use crate::memory::Memory;
 use std::path::PathBuf;
 

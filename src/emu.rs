@@ -1,4 +1,3 @@
-use crate::cartridge::Cartridge;
 use crate::gb::Gameboy;
 use crate::joypad::JoypadKey;
 use crate::window::Window;

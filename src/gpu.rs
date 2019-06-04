@@ -87,17 +87,6 @@ enum StatMode {
     VRAM = 3,
 }
 
-impl StatMode {
-    fn clocks(&self) -> usize {
-        match self {
-            StatMode::HBlank => 204,
-            StatMode::VBlank => 456,
-            StatMode::OAM => 80,
-            StatMode::VRAM => 172,
-        }
-    }
-}
-
 pub enum MonoColor {
     White = 0xff,
     Light = 0xc0,

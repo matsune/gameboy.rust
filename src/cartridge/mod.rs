@@ -1,10 +1,12 @@
 mod mbc1;
 mod mbc3;
+mod mbc5;
 mod rom_only;
 
 use crate::memory::Memory;
 use mbc1::Mbc1;
 use mbc3::Mbc3;
+use mbc5::Mbc5;
 use rom_only::RomOnly;
 use std::fs::{File, OpenOptions};
 use std::io::prelude::*;
@@ -232,7 +234,7 @@ impl Cartridge {
         } else if cart_type.is_mbc3() {
             Box::new(Mbc3::new(data, save_path))
         } else if cart_type.is_mbc5() {
-            unimplemented!("mbc5")
+            Box::new(Mbc5::new(data, save_path))
         } else {
             Box::new(RomOnly::new(data))
         };

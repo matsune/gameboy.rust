@@ -15,6 +15,23 @@ use std::io::prelude::*;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
+#[derive(Debug)]
+enum GBType {
+    Universal,
+    CGB,
+    NonCGB,
+}
+
+impl GBType {
+    fn new(n: u8) -> Self {
+        match n {
+            0x80 => GBType::Universal,
+            0xc0 => GBType::CGB,
+            _ => GBType::NonCGB,
+        }
+    }
+}
+
 const BOOT_ROM: [u8; 0x100] = [
     0x31, 0xFE, 0xFF, 0xAF, 0x21, 0xFF, 0x9F, 0x32, 0xCB, 0x7C, 0x20, 0xFB, 0x21, 0x26, 0xFF, 0x0E,
     0x11, 0x3E, 0x80, 0x32, 0xE2, 0x0C, 0x3E, 0xF3, 0xE2, 0x32, 0x3E, 0x77, 0x77, 0x3E, 0xFC, 0xE0,
@@ -263,14 +280,26 @@ pub struct Cartridge {
     title: String,
     mbc: Box<MBC>,
     skip_boot: bool,
+    pub is_gbc: bool,
 }
 
 impl Cartridge {
-    pub fn new<P: AsRef<Path>>(file_path: P, sav_path: Option<P>, skip_boot: bool) -> Self {
+    pub fn set_skip_boot(mut self, skip_boot: bool) -> Self {
+        self.skip_boot = skip_boot;
+        self
+    }
+
+    pub fn new<P: AsRef<Path>>(file_path: P, sav_path: Option<P>, force_cgb: bool) -> Self {
         let mut file = File::open(&file_path).unwrap();
         let mut data = Vec::new();
         file.read_to_end(&mut data).unwrap();
 
+        let gb_type = GBType::new(data[0x143]);
+        let is_gbc = match gb_type {
+            GBType::NonCGB => false,
+            GBType::CGB => true,
+            GBType::Universal => force_cgb,
+        };
         let cart_type = CartridgeType::new(data[0x147]);
         println!("CartridgeType: {:?}", cart_type);
         let title = read_title(&data);
@@ -301,7 +330,8 @@ impl Cartridge {
         Cartridge {
             title,
             mbc,
-            skip_boot,
+            skip_boot: false,
+            is_gbc,
         }
     }
 

@@ -11,9 +11,9 @@ pub struct CPU {
 }
 
 impl CPU {
-    pub fn new(skip_boot: bool) -> Self {
+    pub fn new(skip_boot: bool, is_gbc: bool) -> Self {
         let reg = if skip_boot {
-            Registers::bootstrap()
+            Registers::bootstrap(is_gbc)
         } else {
             Registers::default()
         };
@@ -51,6 +51,7 @@ const CB_CYCLES: [usize; 256] = [
 
 impl CPU {
     pub fn tick(&mut self, mem: &mut Memory) -> usize {
+        // println!(">> {:?}", self.reg);
         self.update_ime();
 
         let c = self.handle_interrupts(mem);

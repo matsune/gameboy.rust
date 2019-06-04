@@ -17,9 +17,16 @@ fn main() {
                 .help("path to sav file")
                 .required(false),
         )
+        .arg(
+            Arg::with_name("bootrom")
+                .short("b")
+                .long("bootrom")
+                .help("run bootrom"),
+        )
         .get_matches();
     let file_path = matches.value_of("file_path").unwrap();
     let sav_path = matches.value_of("sav_path");
 
-    Emulator::new(file_path).sav_path(sav_path).run(true);
+    let bootrom = matches.is_present("bootrom");
+    Emulator::new(file_path).sav_path(sav_path).run(!bootrom);
 }

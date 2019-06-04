@@ -79,7 +79,7 @@ impl Default for Stat {
     }
 }
 
-#[derive(Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 enum StatMode {
     HBlank = 0,
     VBlank = 1,
@@ -117,10 +117,10 @@ pub struct GPU {
 
 impl GPU {
     pub fn new(skip_boot: bool) -> Self {
-        let (lcdc, bgp, obp0, obp1) = if skip_boot {
-            (Lcdc::from(0x91), 0xfc, 0xff, 0xff)
+        let (lcdc, bgp) = if skip_boot {
+            (Lcdc::from(0x91), 0xfc)
         } else {
-            (Lcdc::from(0x48), 0x00, 0x00, 0x01)
+            (Lcdc::from(0x48), 0x00)
         };
         Self {
             blanked: false,
@@ -132,8 +132,8 @@ impl GPU {
             ly: 0x00,
             ly_compare: 0x00,
             oam: RAM::new(0xfe00, 0xa0),
-            obp0,
-            obp1,
+            obp0: 0xff,
+            obp1: 0xff,
             vram: RAM::new(0x8000, 0x2000),
             scx: 0x00,
             scy: 0x00,
@@ -166,7 +166,7 @@ impl GPU {
         self.data[usize::from(self.ly)][x] = [g, g, g];
     }
 
-    pub fn tick(&mut self, clocks: usize, int_flag: &mut InterruptFlag) {
+    pub fn tick(&mut self, clocks: usize, int_flag: &mut InterruptFlag, b: bool) {
         if !self.lcdc.lcd_enabled() {
             return;
         }

@@ -67,9 +67,9 @@ impl MMU {
         self.cartridge.title()
     }
 
-    pub fn tick(&mut self, clocks: usize, b: bool) {
+    pub fn tick(&mut self, clocks: usize) {
         self.timer.tick(clocks, &mut self.interrupt_flag);
-        self.gpu.tick(clocks, &mut self.interrupt_flag, b);
+        self.gpu.tick(clocks, &mut self.interrupt_flag);
     }
 
     pub fn keydown(&mut self, key: JoypadKey) {

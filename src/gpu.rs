@@ -334,7 +334,7 @@ impl GPU {
                 (self.ram[0][a0 - 0x8000], self.ram[0][a0 + 1 - 0x8000])
             };
 
-            let x_bit = if is_flip_x { x % 8 } else { 7 - x % 8 };
+            let x_bit = if is_flip_x { pixelx } else { 7 - pixelx };
             let c = if b1 & (1 << x_bit) != 0 { 1 } else { 0 }
                 | if b2 & (1 << x_bit) != 0 { 2 } else { 0 };
 
@@ -588,6 +588,68 @@ impl Memory for Palette {
             }
         } else {
             panic!()
+        }
+    }
+}
+
+#[derive(Eq, PartialEq)]
+pub enum HdmaMode {
+    Gdma,
+    Hdma,
+}
+
+pub struct Hdma {
+    pub data: [u8; 4],
+    pub mode: HdmaMode,
+    pub is_transfer: bool,
+    pub len: u8,
+    pub src: u16,
+    pub dst: u16,
+}
+
+impl Hdma {
+    pub fn new() -> Self {
+        Hdma {
+            data: [0; 4],
+            mode: HdmaMode::Gdma,
+            is_transfer: false,
+            len: 0x00,
+            src: 0x00,
+            dst: 0x00,
+        }
+    }
+}
+
+impl Memory for Hdma {
+    fn read(&self, a: u16) -> u8 {
+        match a {
+            0xff51...0xff54 => self.data[usize::from(a) - 0xff51],
+            0xff55 => self.len | (if self.is_transfer { 0 } else { 1 << 7 }),
+            _ => panic!("Hdma read"),
+        }
+    }
+
+    fn write(&mut self, a: u16, v: u8) {
+        match a {
+            0xff51...0xff54 => self.data[usize::from(a) - 0xff51] = v,
+            0xff55 => {
+                if self.is_transfer && self.mode == HdmaMode::Hdma {
+                    if !is_bit_on(v, 7) {
+                        self.is_transfer = false;
+                    }
+                    return;
+                }
+                self.is_transfer = true;
+                self.mode = if is_bit_on(v, 7) {
+                    HdmaMode::Hdma
+                } else {
+                    HdmaMode::Gdma
+                };
+                self.len = v & 0x7f;
+                self.src = (u16::from(self.data[0]) << 8) | u16::from(self.data[1]);
+                self.dst = (u16::from(self.data[2]) << 8) | u16::from(self.data[3]) | 0x8000;
+            }
+            _ => panic!("Hdma write"),
         }
     }
 }

@@ -148,19 +148,19 @@ impl Memory for MMU {
             0xff01...0xff02 => self.serial.read(address),
             0xff04...0xff07 => self.timer.read(address),
             0xff0f => self.interrupt_flag.get(),
-            0xff10...0xff3f => 0, // sound
-            0xff4d => 0,          // TODO: speed
-            0xff40...0xff4f => self.gpu.read(address),
+            0xff10...0xff3f => {
+                println!("unimplemented sound");
+                0
+            }
+            0xff4d => 0, // TODO: speed
+            0xff40...0xff45 | 0xff47...0xff4b | 0xff4f => self.gpu.read(address),
             0xff50 => self.cartridge.read(address),
             0xff51...0xff55 => self.hdma.read(address),
             0xff68...0xff6b => self.gpu.read(address),
             0xff70 => self.wram_bank,
             0xff80...0xfffe => self.hram.read(address),
             0xffff => self.interrupt_enable,
-            _ => {
-                println!("read unknown area 0x{:04x}", address);
-                0
-            }
+            _ => 0,
         }
     }
 
@@ -182,8 +182,8 @@ impl Memory for MMU {
             0xff01...0xff02 => self.serial.write(address, value),
             0xff04...0xff07 => self.timer.write(address, value),
             0xff0f => self.interrupt_flag = InterruptFlag::from(value),
-            0xff10...0xff3f => {} // TODO: sound
-            0xff4d => {}          // TODO: shift
+            0xff10...0xff3f => println!("unimplemented sound"),
+            0xff4d => {} // TODO: shift
             0xff46 => {
                 let base = u16::from(value) << 8;
                 for i in 0..0xa0 {

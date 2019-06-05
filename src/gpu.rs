@@ -4,6 +4,8 @@ use crate::util::is_bit_on;
 
 pub const SCREEN_W: usize = 160;
 pub const SCREEN_H: usize = 144;
+const DATA_SIZE: usize = SCREEN_W * SCREEN_H * 3;
+type ScreenData = [u8; DATA_SIZE];
 
 #[derive(PartialEq, Copy, Clone)]
 enum BgPrio {
@@ -95,10 +97,47 @@ pub enum MonoColor {
     Black = 0x00,
 }
 
+impl MonoColor {
+    // Bit 7-6 - Shade for Color Number 3
+    // Bit 5-4 - Shade for Color Number 2
+    // Bit 3-2 - Shade for Color Number 1
+    // Bit 1-0 - Shade for Color Number 0
+    fn new(palette: u8, color_num: u8) -> Self {
+        match (palette >> (2 * color_num)) & 0b11 {
+            0x00 => MonoColor::White,
+            0x01 => MonoColor::Light,
+            0x02 => MonoColor::Dark,
+            _ => MonoColor::Black,
+        }
+    }
+}
+
+struct Attr {
+    below_bg: bool,  // Bit 7
+    y_flip: bool,    // Bit 6
+    x_flip: bool,    // Bit 5
+    is_obp1: bool,   // Bit 4
+    bank1: bool,     // Bit 3
+    palette_num: u8, // Bit 0-2
+}
+
+impl From<u8> for Attr {
+    fn from(flags: u8) -> Self {
+        Attr {
+            below_bg: is_bit_on(flags, 7),
+            y_flip: is_bit_on(flags, 6),
+            x_flip: is_bit_on(flags, 5),
+            is_obp1: is_bit_on(flags, 4),
+            bank1: is_bit_on(flags, 3),
+            palette_num: flags & 0x07,
+        }
+    }
+}
+
 pub struct GPU {
     is_gbc: bool,
     pub blanked: bool,
-    data: [[[u8; 3]; SCREEN_W]; SCREEN_H],
+    data: ScreenData,
     pub redraw: bool,
     bgp: u8,
     clocks: usize,
@@ -130,7 +169,7 @@ impl GPU {
         Self {
             is_gbc,
             blanked: false,
-            data: [[[0xffu8; 3]; SCREEN_W]; SCREEN_H],
+            data: [0xff; DATA_SIZE],
             redraw: false,
             bgp,
             clocks: 0,
@@ -154,34 +193,26 @@ impl GPU {
     }
 
     pub fn get_rgb_data(&self) -> Vec<u8> {
-        let mut res = Vec::new();
-        for line in self.data.iter() {
-            for rgb in line.iter() {
-                res.extend(rgb);
-            }
-        }
-        res
+        self.data.to_vec()
     }
 
-    fn get_mono_color(v: u8, i: usize) -> MonoColor {
-        match (v >> 2 * i) & 0x03 {
-            0x00 => MonoColor::White,
-            0x01 => MonoColor::Light,
-            0x02 => MonoColor::Dark,
-            _ => MonoColor::Black,
-        }
+    fn set_color(&mut self, x: usize, a: u8, b: u8, c: u8) {
+        let idx = usize::from(self.ly) * SCREEN_W * 3 + x * 3;
+        self.data[idx] = a;
+        self.data[idx + 1] = b;
+        self.data[idx + 2] = c;
     }
 
     fn set_mono_color(&mut self, x: usize, g: u8) {
-        self.data[usize::from(self.ly)][x] = [g, g, g];
+        self.set_color(x, g, g, g);
     }
 
-    fn set_color(&mut self, x: usize, r: u8, g: u8, b: u8) {
+    fn set_rgb_color(&mut self, x: usize, r: u8, g: u8, b: u8) {
         let (r, g, b) = (u32::from(r), u32::from(g), u32::from(b));
         let lr = ((r * 13 + g * 2 + b) >> 1) as u8;
         let lg = ((g * 3 + b) << 1) as u8;
         let lb = ((r * 3 + g * 2 + b * 11) >> 1) as u8;
-        self.data[usize::from(self.ly)][x] = [lr, lg, lb];
+        self.set_color(x, lr, lg, lb);
     }
 
     pub fn tick(&mut self, clocks: usize, int_flag: &mut InterruptFlag) {
@@ -202,7 +233,6 @@ impl GPU {
                 if self.stat.ly_interrupt_enabled && self.ly == self.ly_compare {
                     int_flag.interrupt(InterruptType::LCDC);
                 }
-
                 if self.ly >= 144 && self.stat.mode != StatMode::VBlank {
                     self.set_mode(StatMode::VBlank, int_flag);
                 }
@@ -253,116 +283,98 @@ impl GPU {
             self.bg_prio[x] = BgPrio::Normal;
         }
         self.draw_bg();
-        self.draw_sprites();
+        if self.lcdc.sprite_enabled() {
+            self.draw_sprites();
+        }
     }
 
     fn draw_bg(&mut self) {
-        let drawbg = false || self.lcdc.bg_win_enabled();
-
-        let winy = if !self.lcdc.window_enabled() || (false && !self.lcdc.bg_win_enabled()) {
+        let draw_bg = self.is_gbc || self.lcdc.bg_win_enabled();
+        let win_y = if !self.lcdc.window_enabled() || (self.is_gbc && !self.lcdc.bg_win_enabled()) {
             -1
         } else {
-            self.ly as i32 - self.wy as i32
+            self.ly as i16 - self.wy as i16
         };
-
-        if winy < 0 && drawbg == false {
+        if win_y < 0 && !draw_bg {
             return;
         }
-
-        let wintiley = (winy as u16 >> 3) & 31;
-
-        let bgy = self.scy.wrapping_add(self.ly);
-        let bgtiley = (bgy as u16 >> 3) & 31;
-
+        let tile_base = if self.lcdc.tileset() { 0x8000 } else { 0x8800 };
+        let bg_y = self.ly.wrapping_add(self.scy);
         for x in 0..SCREEN_W {
-            let winx = -((self.wx as i32) - 7) + (x as i32);
-            let bgx = self.scx as u32 + x as u32;
-
-            let (tilemapbase, tiley, tilex, pixely, pixelx) = if winy >= 0 && winx >= 0 {
+            let win_x = x as i16 - self.wx as i16 + 7;
+            let bg_x = x as u16 + u16::from(self.scx);
+            let (tilemap_base, tile_y, tile_x, pixel_y, pixel_x) = if win_y >= 0 && win_x >= 0 {
                 (
                     if self.lcdc.window_tilemap() {
                         0x9c00
                     } else {
                         0x9800
                     },
-                    wintiley,
-                    (winx as u16 >> 3),
-                    winy as u16 & 0x07,
-                    winx as u8 & 0x07,
+                    (win_y as u8 / 8) % 32,
+                    (win_x as u8 / 8) % 32,
+                    win_y as u8 % 8,
+                    win_x as u8 % 8,
                 )
-            } else if drawbg {
+            } else {
                 (
                     if self.lcdc.bg_tilemap() {
-                        0x9C00
+                        0x9c00
                     } else {
                         0x9800
                     },
-                    bgtiley,
-                    (bgx as u16 >> 3) & 31,
-                    bgy as u16 & 0x07,
-                    bgx as u8 & 0x07,
+                    (bg_y as u8 / 8) % 32,
+                    (bg_x as u8 / 8) % 32,
+                    bg_y as u8 % 8,
+                    bg_x as u8 % 8,
                 )
-            } else {
-                continue;
             };
 
-            let tile_address = usize::from(tilemapbase + tiley * 32 + tilex);
-            let tile_num = self.ram[0][tile_address - 0x8000];
-            let tilebase = if self.lcdc.tileset() { 0x8000 } else { 0x8800 };
-            let tile_location = tilebase
+            let tile_address = tilemap_base + u16::from(tile_y) * 32 + u16::from(tile_x);
+            let tile_num = self.read_ram0(tile_address);
+            let tile_location = tile_base
                 + (if self.lcdc.tileset() {
                     tile_num as u16
                 } else {
                     (tile_num as i8 as i16 + 128) as u16
                 }) * 16;
-            let flags = self.ram[1][tile_address - 0x8000];
-            let below_bg = is_bit_on(flags, 7);
-            let is_flip_y = is_bit_on(flags, 6);
-            let is_flip_x = is_bit_on(flags, 5);
-            let rambank_1 = is_bit_on(flags, 3);
-            let palette_num_1 = flags & 0x07;
 
-            let line: u16 = if self.is_gbc && is_flip_y {
-                (7 - pixely) * 2
+            let attr = Attr::from(self.read_ram1(tile_address));
+
+            let line = u16::from(if self.is_gbc && attr.y_flip {
+                (7 - pixel_y) * 2
             } else {
-                pixely * 2
-            };
-            let a0 = usize::from(tile_location + line);
-            let (b1, b2) = if self.is_gbc && rambank_1 {
-                (self.ram[1][a0 - 0x8000], self.ram[1][a0 + 1 - 0x8000])
+                pixel_y * 2
+            });
+            let a0 = tile_location + line;
+            let (b1, b2) = if self.is_gbc && attr.bank1 {
+                (self.read_ram1(a0), self.read_ram1(a0 + 1))
             } else {
-                (self.ram[0][a0 - 0x8000], self.ram[0][a0 + 1 - 0x8000])
+                (self.read_ram0(a0), self.read_ram0(a0 + 1))
             };
 
-            let x_bit = if is_flip_x { pixelx } else { 7 - pixelx };
-            let c = if b1 & (1 << x_bit) != 0 { 1 } else { 0 }
+            let x_bit = if attr.x_flip { pixel_x } else { 7 - pixel_x };
+            let c: u8 = if b1 & (1 << x_bit) != 0 { 1 } else { 0 }
                 | if b2 & (1 << x_bit) != 0 { 2 } else { 0 };
 
             self.bg_prio[x] = if c == 0 {
                 BgPrio::Color0
-            } else if below_bg {
+            } else if attr.below_bg {
                 BgPrio::PrioFlag
             } else {
                 BgPrio::Normal
             };
 
             if self.is_gbc {
-                let r = self.bg_palette.get(usize::from(palette_num_1), c, 0);
-                let g = self.bg_palette.get(usize::from(palette_num_1), c, 1);
-                let b = self.bg_palette.get(usize::from(palette_num_1), c, 2);
-                self.set_color(x, r, g, b);
+                let (r, g, b) = self.bg_palette.get_rgb(attr.palette_num, c);
+                self.set_rgb_color(x, r, g, b);
             } else {
-                let color = Self::get_mono_color(self.bgp, c) as u8;
+                let color = MonoColor::new(self.bgp, c) as u8;
                 self.set_mono_color(x, color);
             }
         }
     }
 
     fn draw_sprites(&mut self) {
-        if !self.lcdc.sprite_enabled() {
-            return;
-        }
-
         for index in 0..40 {
             let i = 39 - index;
             let address = 0xfe00 + 0x04 * i;
@@ -370,13 +382,7 @@ impl GPU {
             let pos_x = i32::from(u16::from(self.read(address + 1))) - 8;
             let is_8x16 = self.lcdc.sprite_size();
             let pattern_id = self.read(address + 2) & (if is_8x16 { 0xfe } else { 0xff });
-            let flags = self.read(address + 3);
-            let below_bg = is_bit_on(flags, 7);
-            let is_flip_y = is_bit_on(flags, 6);
-            let is_flip_x = is_bit_on(flags, 5);
-            let is_obp1 = is_bit_on(flags, 4);
-            let rambank_1 = is_bit_on(flags, 3);
-            let palette_num_1 = flags & 0x07;
+            let attr = Attr::from(self.read(address + 3));
             let sprite_height = if is_8x16 { 16 } else { 8 };
             let line = i32::from(self.ly);
             if line < pos_y || line >= pos_y + sprite_height {
@@ -385,28 +391,28 @@ impl GPU {
             if pos_x < -7 || pos_x >= SCREEN_W as i32 + 7 {
                 continue;
             }
-            let tile_y = if is_flip_y {
+            let tile_y = if attr.y_flip {
                 (sprite_height - 1 - (line - pos_y))
             } else {
                 line - pos_y
             } as u16;
             let tile_address = 0x8000 + u16::from(pattern_id) * 0x10 + tile_y * 2;
-            let (b1, b2) = if rambank_1 && self.is_gbc {
+            let (b1, b2) = if attr.bank1 && self.is_gbc {
                 (
-                    self.ram[1][usize::from(tile_address) - 0x8000],
-                    self.ram[1][usize::from(tile_address) + 1 - 0x8000],
+                    self.read_ram1(tile_address),
+                    self.read_ram1(tile_address + 1),
                 )
             } else {
                 (
-                    self.ram[0][usize::from(tile_address) - 0x8000],
-                    self.ram[0][usize::from(tile_address) + 1 - 0x8000],
+                    self.read_ram0(tile_address),
+                    self.read_ram0(tile_address + 1),
                 )
             };
             'xloop: for x in 0..8 {
                 if pos_x + x < 0 || pos_x + x >= SCREEN_W as i32 {
                     continue;
                 }
-                let x_bit = 1 << (if is_flip_x { x } else { 7 - x });
+                let x_bit = 1 << (if attr.x_flip { x } else { 7 - x });
                 let c =
                     if (b1 & x_bit) != 0 { 1 } else { 0 } + if (b2 & x_bit) != 0 { 2 } else { 0 };
                 if c == 0 {
@@ -415,27 +421,34 @@ impl GPU {
                 if self.is_gbc {
                     if self.lcdc.lcd_enabled()
                         && (self.bg_prio[(pos_x + x) as usize] == BgPrio::PrioFlag
-                            || (below_bg && self.bg_prio[(pos_x + x) as usize] != BgPrio::Color0))
+                            || (attr.below_bg
+                                && self.bg_prio[(pos_x + x) as usize] != BgPrio::Color0))
                     {
                         continue 'xloop;
                     }
-                    let r = self.sprite_palette.get(usize::from(palette_num_1), c, 0);
-                    let g = self.sprite_palette.get(usize::from(palette_num_1), c, 1);
-                    let b = self.sprite_palette.get(usize::from(palette_num_1), c, 2);
-                    self.set_color((pos_x + x) as usize, r, g, b);
+                    let (r, g, b) = self.sprite_palette.get_rgb(attr.palette_num, c);
+                    self.set_rgb_color((pos_x + x) as usize, r, g, b);
                 } else {
-                    if below_bg && self.bg_prio[(pos_x + x) as usize] != BgPrio::Color0 {
+                    if attr.below_bg && self.bg_prio[(pos_x + x) as usize] != BgPrio::Color0 {
                         continue 'xloop;
                     }
-                    let color = if is_obp1 {
-                        Self::get_mono_color(self.obp1, c) as u8
+                    let color = if attr.is_obp1 {
+                        MonoColor::new(self.obp1, c) as u8
                     } else {
-                        Self::get_mono_color(self.obp0, c) as u8
+                        MonoColor::new(self.obp0, c) as u8
                     };
                     self.set_mono_color((pos_x + x) as usize, color);
                 }
             }
         }
+    }
+
+    fn read_ram0(&self, address: u16) -> u8 {
+        self.ram[0][usize::from(address) - 0x8000]
+    }
+
+    fn read_ram1(&self, address: u16) -> u8 {
+        self.ram[1][usize::from(address) - 0x8000]
     }
 }
 
@@ -477,7 +490,6 @@ impl Memory for GPU {
             0xff43 => self.scx,
             0xff44 => self.ly,
             0xff45 => self.ly_compare,
-            0xff46 => 0,
             0xff47 => self.bgp,
             0xff48 => self.obp0,
             0xff49 => self.obp1,
@@ -499,7 +511,7 @@ impl Memory for GPU {
                     self.clocks = 0;
                     self.ly = 0;
                     self.stat.mode = StatMode::HBlank;
-                    self.data = [[[0xffu8; 3]; SCREEN_W]; SCREEN_H];
+                    self.data = [0xff; DATA_SIZE];
                     self.redraw = true;
                 }
             }
@@ -543,8 +555,12 @@ impl Palette {
         }
     }
 
-    fn get(&self, r: usize, c: usize, idx: usize) -> u8 {
-        self.palettes[r][c][idx]
+    fn get_rgb(&self, r: u8, c: u8) -> (u8, u8, u8) {
+        (
+            self.palettes[usize::from(r)][usize::from(c)][0],
+            self.palettes[usize::from(r)][usize::from(c)][1],
+            self.palettes[usize::from(r)][usize::from(c)][2],
+        )
     }
 }
 
@@ -565,7 +581,7 @@ impl Memory for Palette {
                 a | b
             }
         } else {
-            panic!()
+            panic!("Palette unsupported address to read 0x{:04x}", a)
         }
     }
 
@@ -587,7 +603,7 @@ impl Memory for Palette {
                 self.index = (self.index + 1) & 0x3f;
             }
         } else {
-            panic!()
+            panic!("Palette unsupported address to write 0x{:04x}", a)
         }
     }
 }
@@ -625,7 +641,7 @@ impl Memory for Hdma {
         match a {
             0xff51...0xff54 => self.data[usize::from(a) - 0xff51],
             0xff55 => self.len | (if self.is_transfer { 0 } else { 1 << 7 }),
-            _ => panic!("Hdma read"),
+            _ => panic!("Hdma unsupported address to read 0x{:04x}", a),
         }
     }
 
@@ -649,7 +665,7 @@ impl Memory for Hdma {
                 self.src = (u16::from(self.data[0]) << 8) | u16::from(self.data[1]);
                 self.dst = (u16::from(self.data[2]) << 8) | u16::from(self.data[3]) | 0x8000;
             }
-            _ => panic!("Hdma write"),
+            _ => panic!("Hdma unsupported address to write 0x{:04x}", a),
         }
     }
 }

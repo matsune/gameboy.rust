@@ -7,3 +7,4 @@ edition = "2018"
 [dependencies]
 clap = "2.31.2"
 glium = "*"
+blip_buf = "0.1"

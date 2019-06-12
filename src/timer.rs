@@ -3,8 +3,8 @@ use crate::util::is_bit_on;
 
 #[derive(Default)]
 pub struct Timer {
-    div_clocks: usize,
-    main_clocks: usize,
+    div_clocks: u32,
+    main_clocks: u32,
     divider: u8, // DIV
     counter: u8, // TIMA
     modulo: u8,  // TMA
@@ -26,13 +26,13 @@ impl TAC {
         self.inner
     }
 
-    fn thresh(&self) -> usize {
+    fn thresh(&self) -> u32 {
         match self.inner & 0b11 {
             0 => 1024, // 4KHz
             1 => 16,   // 256KHz
             2 => 64,   // 64KHz
             3 => 256,  // 16KHz
-            _ => panic!(),
+            _ => unreachable!(),
         }
     }
 
@@ -48,12 +48,12 @@ impl std::convert::From<u8> for TAC {
 }
 
 impl Timer {
-    pub fn tick(&mut self, clocks: usize, int_flag: &mut InterruptFlag) {
+    pub fn tick(&mut self, clocks: u32, int_flag: &mut InterruptFlag) {
         self.update_div(clocks);
         self.update_timer(clocks, int_flag);
     }
 
-    fn update_div(&mut self, clocks: usize) {
+    fn update_div(&mut self, clocks: u32) {
         self.div_clocks += clocks;
         if self.div_clocks >= 256 {
             self.div_clocks -= 256;
@@ -61,7 +61,7 @@ impl Timer {
         }
     }
 
-    fn update_timer(&mut self, clocks: usize, int_flag: &mut InterruptFlag) {
+    fn update_timer(&mut self, clocks: u32, int_flag: &mut InterruptFlag) {
         if !self.tac.enable() {
             return;
         }

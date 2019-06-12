@@ -1,5 +1,4 @@
-use crate::memory::Memory;
-use crate::mmu::{InterruptFlag, InterruptType};
+use crate::memory::{InterruptFlag, InterruptType, Memory};
 use crate::util::is_bit_on;
 
 #[derive(Default)]

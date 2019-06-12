@@ -36,6 +36,7 @@ impl Window {
             texture,
         }
     }
+
     pub fn draw(&self, data: Vec<u8>) {
         let w = SCREEN_W as u32;
         let h = SCREEN_H as u32;

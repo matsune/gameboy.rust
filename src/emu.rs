@@ -1,6 +1,8 @@
-use crate::gb::Gameboy;
+use crate::cartridge::Cartridge;
+use crate::cpu::CPU;
+use crate::gui::Window;
 use crate::joypad::JoypadKey;
-use crate::window::Window;
+use crate::memory::MMU;
 use glium::glutin;
 use std::path::Path;
 use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
@@ -113,5 +115,25 @@ fn get_joypad_key(key: glutin::VirtualKeyCode) -> Option<JoypadKey> {
         glutin::VirtualKeyCode::Z => Some(JoypadKey::A),
         glutin::VirtualKeyCode::X => Some(JoypadKey::B),
         _ => None,
+    }
+}
+
+struct Gameboy {
+    pub cpu: CPU,
+    pub mmu: MMU,
+}
+
+impl Gameboy {
+    fn new<P: AsRef<Path>>(file_path: P, sav_path: Option<P>, skip_boot: bool) -> Self {
+        let cartridge = Cartridge::new(file_path, sav_path, true).set_skip_boot(skip_boot);
+        Self {
+            cpu: CPU::new(skip_boot, cartridge.is_gbc),
+            mmu: MMU::new(cartridge, skip_boot),
+        }
+    }
+
+    fn tick(&mut self) {
+        let cycles = self.cpu.tick(&mut self.mmu);
+        self.mmu.tick(cycles * 4);
     }
 }

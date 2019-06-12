@@ -26,7 +26,6 @@ fn main() {
         .get_matches();
     let file_path = matches.value_of("file_path").unwrap();
     let sav_path = matches.value_of("sav_path");
-
     let bootrom = matches.is_present("bootrom");
     Emulator::new(file_path).sav_path(sav_path).run(!bootrom);
 }

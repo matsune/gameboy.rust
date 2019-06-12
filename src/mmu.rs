@@ -191,7 +191,7 @@ impl Memory for MMU {
                     self.write(0xfe00 + i, b);
                 }
             }
-            0xff40...0xff4f => self.gpu.write(address, value),
+            0xff40...0xff45 | 0xff47...0xff4b | 0xff4f => self.gpu.write(address, value),
             0xff50 => self.cartridge.write(address, value),
             0xff51...0xff55 => self.hdma.write(address, value),
             0xff68...0xff6b => self.gpu.write(address, value),

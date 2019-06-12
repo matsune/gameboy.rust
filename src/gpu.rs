@@ -1,5 +1,4 @@
-use super::memory::{Memory, RAM};
-use crate::mmu::{InterruptFlag, InterruptType};
+use super::memory::{InterruptFlag, InterruptType, Memory, RAM};
 use crate::util::is_bit_on;
 
 pub const SCREEN_W: usize = 160;

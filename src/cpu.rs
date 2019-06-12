@@ -51,7 +51,6 @@ const CB_CYCLES: [usize; 256] = [
 
 impl CPU {
     pub fn tick(&mut self, mem: &mut Memory) -> usize {
-        // println!(">> {:?}", self.reg);
         self.update_ime();
 
         let c = self.handle_interrupts(mem);
@@ -502,7 +501,6 @@ impl CPU {
                     internal_delay += 1;
                 }
             }
-            0xd3 => panic!("Opcode 0xd3"),
             0xd4 => {
                 if !self.reg.get_flag(C) {
                     self.push(mem, self.reg.pc + 2);
@@ -538,7 +536,6 @@ impl CPU {
                     internal_delay += 1;
                 }
             }
-            0xdb => panic!("Opcode 0xdb"),
             0xdc => {
                 if self.reg.get_flag(C) {
                     self.push(mem, self.reg.pc + 2);
@@ -548,7 +545,6 @@ impl CPU {
                     self.reg.pc += 2;
                 }
             }
-            0xdd => panic!("Opcode 0xdd"),
             0xde => {
                 let v = self.read_byte(mem);
                 self.alu_sbc(v);
@@ -566,8 +562,6 @@ impl CPU {
                 self.reg.set_hl(v);
             }
             0xe2 => mem.write(0xff00 | u16::from(self.reg.c), self.reg.a),
-            0xe3 => panic!("Opcode 0xe3"),
-            0xe4 => panic!("Opcode 0xd4"),
             0xe5 => self.push(mem, self.reg.hl()),
             0xe6 => {
                 let v = self.read_byte(mem);
@@ -583,9 +577,6 @@ impl CPU {
                 let a = self.read_word(mem);
                 mem.write(a, self.reg.a);
             }
-            0xeb => panic!("Opcode 0xeb"),
-            0xec => panic!("Opcode 0xec"),
-            0xed => panic!("Opcode 0xed"),
             0xee => {
                 let v = self.read_byte(mem);
                 self.alu_xor(v);
@@ -603,11 +594,7 @@ impl CPU {
                 self.reg.set_af(v);
             }
             0xf2 => self.reg.a = mem.read(0xff00 | u16::from(self.reg.c)),
-            0xf3 => {
-                // TODO: CGB/GBA: self.di = 2
-                self.di = 1;
-            }
-            0xf4 => panic!("Opcode 0xf4"),
+            0xf3 => self.di = 2,
             0xf5 => self.push(mem, self.reg.af()),
             0xf6 => {
                 let v = self.read_byte(mem);
@@ -632,8 +619,6 @@ impl CPU {
                 self.reg.a = mem.read(a);
             }
             0xfb => self.ei = 2,
-            0xfc => panic!("Opcode 0xfc"),
-            0xfd => panic!("Opcode 0xfd"),
             0xfe => {
                 let v = self.read_byte(mem);
                 self.alu_cp(v);
@@ -642,6 +627,7 @@ impl CPU {
                 self.push(mem, self.reg.pc);
                 self.reg.pc = 0x38;
             }
+            _ => panic!("Unknown opcode {:02x}", opcode),
         };
         if opcode == 0xcb {
             CB_CYCLES[cbcode as usize]

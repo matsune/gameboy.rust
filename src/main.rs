@@ -14,8 +14,7 @@ fn main() {
             Arg::with_name("sav_path")
                 .short("s")
                 .long("sav")
-                .help("path to sav file")
-                .required(false),
+                .help("path to sav file"),
         )
         .arg(
             Arg::with_name("bootrom")
@@ -23,9 +22,19 @@ fn main() {
                 .long("bootrom")
                 .help("run bootrom"),
         )
+        .arg(
+            Arg::with_name("mute")
+                .short("m")
+                .long("mute")
+                .help("disable sound"),
+        )
         .get_matches();
     let file_path = matches.value_of("file_path").unwrap();
     let sav_path = matches.value_of("sav_path");
+    let mute = matches.is_present("mute");
     let bootrom = matches.is_present("bootrom");
-    Emulator::new(file_path).sav_path(sav_path).run(!bootrom);
+    Emulator::new(file_path)
+        .sav_path(sav_path)
+        .mute(mute)
+        .run(!bootrom);
 }

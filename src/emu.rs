@@ -13,6 +13,7 @@ use std::thread;
 pub struct Emulator<P: AsRef<Path>> {
     file_path: P,
     sav_path: Option<P>,
+    mute: bool,
 }
 
 impl<P: AsRef<Path>> Emulator<P> {
@@ -20,6 +21,7 @@ impl<P: AsRef<Path>> Emulator<P> {
         Self {
             file_path,
             sav_path: None,
+            mute: false,
         }
     }
 
@@ -28,15 +30,26 @@ impl<P: AsRef<Path>> Emulator<P> {
         self
     }
 
+    pub fn mute(mut self, mute: bool) -> Self {
+        self.mute = mute;
+        self
+    }
+
     pub fn run(self, skip_boot: bool) {
         let (data_tx, data_rx) = channel();
         let (key_tx, key_rx) = channel();
         let mut gameboy = Gameboy::new(self.file_path, self.sav_path, skip_boot);
         let title = gameboy.mmu.title().to_owned();
-        if let Some((player, event_loop, shared_buffer)) = CpalPlayer::new() {
-            gameboy.mmu.enable_sound(Box::new(player));
-            thread::spawn(move || Self::run_cpal_thread(event_loop, shared_buffer));
+
+        // Sound
+        if !self.mute {
+            if let Some((player, event_loop, shared_buffer)) = CpalPlayer::new() {
+                gameboy.mmu.enable_sound(Box::new(player));
+                thread::spawn(move || Self::run_cpal_thread(event_loop, shared_buffer));
+            }
         }
+
+        // CPU
         let cpu_thread = thread::Builder::new()
             .name("CPU thread".to_string())
             .spawn(move || Self::run_cpu_thread(gameboy, data_tx, key_rx))

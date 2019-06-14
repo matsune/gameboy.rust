@@ -139,7 +139,7 @@ pub struct GPU {
     data: ScreenData,
     pub redraw: bool,
     bgp: u8,
-    clocks: usize,
+    clocks: u32,
     lcdc: Lcdc,
     ly: u8,
     ly_compare: u8,
@@ -214,7 +214,7 @@ impl GPU {
         self.set_color(x, lr, lg, lb);
     }
 
-    pub fn tick(&mut self, clocks: usize, int_flag: &mut InterruptFlag) {
+    pub fn tick(&mut self, clocks: u32, int_flag: &mut InterruptFlag) {
         if !self.lcdc.lcd_enabled() {
             return;
         }

@@ -27,7 +27,7 @@ impl CPU {
     }
 }
 
-const OP_CYCLES: [usize; 256] = [
+const OP_CYCLES: [u32; 256] = [
     1, 3, 2, 2, 1, 1, 2, 1, 5, 2, 2, 2, 1, 1, 2, 1, 0, 3, 2, 2, 1, 1, 2, 1, 3, 2, 2, 2, 1, 1, 2, 1,
     2, 3, 2, 2, 1, 1, 2, 1, 2, 2, 2, 2, 1, 1, 2, 1, 2, 3, 2, 2, 3, 3, 3, 1, 2, 2, 2, 2, 1, 1, 2, 1,
     1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1,
@@ -38,7 +38,7 @@ const OP_CYCLES: [usize; 256] = [
     3, 3, 2, 0, 0, 4, 2, 4, 4, 1, 4, 0, 0, 0, 2, 4, 3, 3, 2, 1, 0, 4, 2, 4, 3, 2, 4, 1, 0, 0, 2, 4,
 ];
 
-const CB_CYCLES: [usize; 256] = [
+const CB_CYCLES: [u32; 256] = [
     2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
     2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
     2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2,
@@ -50,7 +50,7 @@ const CB_CYCLES: [usize; 256] = [
 ];
 
 impl CPU {
-    pub fn tick(&mut self, mem: &mut Memory) -> usize {
+    pub fn tick(&mut self, mem: &mut Memory) -> u32 {
         self.update_ime();
 
         let c = self.handle_interrupts(mem);
@@ -82,7 +82,7 @@ impl CPU {
         }
     }
 
-    fn handle_interrupts(&mut self, mem: &mut Memory) -> usize {
+    fn handle_interrupts(&mut self, mem: &mut Memory) -> u32 {
         if !self.ime && !self.halted {
             return 0;
         }
@@ -105,10 +105,10 @@ impl CPU {
         4
     }
 
-    fn command(&mut self, mem: &mut Memory) -> usize {
+    fn command(&mut self, mem: &mut Memory) -> u32 {
         let opcode = self.read_byte(mem);
         let mut cbcode: u8 = 0;
-        let mut internal_delay: usize = 0;
+        let mut internal_delay = 0u32;
         match opcode {
             0x00 => {}
             0x01 => {

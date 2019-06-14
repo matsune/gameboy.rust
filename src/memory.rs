@@ -2,6 +2,7 @@ use crate::cartridge::Cartridge;
 use crate::gpu::{Hdma, HdmaMode, GPU};
 use crate::joypad::{Joypad, JoypadKey};
 use crate::serial::Serial;
+use crate::sound::{AudioPlayer, Sound};
 use crate::timer::Timer;
 use crate::util::{get_lsb, get_msb};
 
@@ -82,6 +83,7 @@ pub struct MMU {
     serial: Serial,
     timer: Timer,
     joypad: Joypad,
+    sound: Option<Sound>,
     pub gpu: GPU,
     pub interrupt_flag: InterruptFlag,
     pub interrupt_enable: u8,
@@ -99,17 +101,22 @@ impl MMU {
             serial: Serial::default(),
             timer: Timer::default(),
             joypad: Joypad::default(),
+            sound: None,
             gpu: GPU::new(is_gbc, skip_boot),
             interrupt_flag: InterruptFlag::from(0),
             interrupt_enable: 0,
         }
     }
 
+    pub fn enable_sound(&mut self, player: Box<AudioPlayer>) {
+        self.sound = Some(Sound::new(player));
+    }
+
     pub fn title(&self) -> &str {
         self.cartridge.title()
     }
 
-    pub fn tick(&mut self, clocks: usize) {
+    pub fn tick(&mut self, clocks: u32) -> u32 {
         let speed = 1;
         let vram_clocks = self.tick_dma();
 
@@ -117,6 +124,11 @@ impl MMU {
         let cpu_clocks = clocks + vram_clocks * speed;
         self.timer.tick(cpu_clocks, &mut self.interrupt_flag);
         self.gpu.tick(gpu_clocks, &mut self.interrupt_flag);
+        if let Some(sound) = &mut self.sound {
+            sound.tick(gpu_clocks);
+        }
+
+        gpu_clocks
     }
 
     pub fn keydown(&mut self, key: JoypadKey) {
@@ -127,13 +139,13 @@ impl MMU {
         self.joypad.keyup(key);
     }
 
-    fn tick_dma(&mut self) -> usize {
+    fn tick_dma(&mut self) -> u32 {
         if !self.hdma.is_transfer {
             return 0;
         }
         match self.hdma.mode {
             HdmaMode::Gdma => {
-                let len = usize::from(self.hdma.len) + 1;
+                let len = u32::from(self.hdma.len) + 1;
                 for _ in 0..len {
                     self.run_dma_hrampart();
                 }
@@ -188,10 +200,10 @@ impl Memory for MMU {
             0xff01...0xff02 => self.serial.read(address),
             0xff04...0xff07 => self.timer.read(address),
             0xff0f => self.interrupt_flag.get(),
-            0xff10...0xff3f => {
-                println!("unimplemented sound");
-                0
-            }
+            0xff10...0xff3f => match &self.sound {
+                Some(sound) => sound.read(address),
+                None => 0,
+            },
             0xff4d => 0, // TODO: speed
             0xff40...0xff45 | 0xff47...0xff4b | 0xff4f => self.gpu.read(address),
             0xff50 => self.cartridge.read(address),
@@ -222,7 +234,10 @@ impl Memory for MMU {
             0xff01...0xff02 => self.serial.write(address, value),
             0xff04...0xff07 => self.timer.write(address, value),
             0xff0f => self.interrupt_flag = InterruptFlag::from(value),
-            0xff10...0xff3f => println!("unimplemented sound"),
+            0xff10...0xff3f => match &mut self.sound {
+                Some(sound) => sound.write(address, value),
+                None => {}
+            },
             0xff4d => {} // TODO: shift
             0xff46 => {
                 let base = u16::from(value) << 8;

@@ -31,12 +31,12 @@ impl Mbc2 {
 impl Memory for Mbc2 {
     fn read(&self, address: u16) -> u8 {
         match address {
-            0x0000...0x3fff => *self.rom.get(usize::from(address)).unwrap_or(&0),
-            0x4000...0x7fff => {
+            0x0000..=0x3fff => *self.rom.get(usize::from(address)).unwrap_or(&0),
+            0x4000..=0x7fff => {
                 let a = usize::from(self.rom_bank) * 0x4000 + usize::from(address) - 0x4000;
                 *self.rom.get(a).unwrap_or(&0)
             }
-            0xa000...0xbfff => {
+            0xa000..=0xbfff => {
                 if self.ram_enabled {
                     *self.ram.get(usize::from(address) - 0xa000).unwrap_or(&0)
                 } else {
@@ -49,17 +49,17 @@ impl Memory for Mbc2 {
 
     fn write(&mut self, address: u16, value: u8) {
         match address {
-            0x0000...0x1fff => {
+            0x0000..=0x1fff => {
                 if (address >> 8) & 0x01 == 0 {
                     self.ram_enabled = !self.ram_enabled;
                 }
             }
-            0x2000...0x3fff => {
+            0x2000..=0x3fff => {
                 if (address >> 8) & 0x01 == 1 {
                     self.rom_bank = value & 0x0f;
                 }
             }
-            0xa000...0xbfff => {
+            0xa000..=0xbfff => {
                 if self.ram_enabled {
                     self.ram[usize::from(address) - 0xa000] = value;
                 }

@@ -33,12 +33,12 @@ impl Mbc5 {
 impl Memory for Mbc5 {
     fn read(&self, address: u16) -> u8 {
         match address {
-            0x0000...0x3fff => *self.rom.get(usize::from(address)).unwrap_or(&0),
-            0x4000...0x7fff => {
+            0x0000..=0x3fff => *self.rom.get(usize::from(address)).unwrap_or(&0),
+            0x4000..=0x7fff => {
                 let a = usize::from(self.rom_bank) * 0x4000 + usize::from(address) - 0x4000;
                 *self.rom.get(a).unwrap_or(&0)
             }
-            0xa000...0xbfff => {
+            0xa000..=0xbfff => {
                 if self.ram_enabled {
                     let a = usize::from(self.ram_bank) * 0x2000 + usize::from(address) - 0xa000;
                     *self.ram.get(a).unwrap_or(&0)
@@ -52,11 +52,11 @@ impl Memory for Mbc5 {
 
     fn write(&mut self, address: u16, value: u8) {
         match address {
-            0x0000...0x1fff => self.ram_enabled = (value & 0x0f) == 0x0a,
-            0x2000...0x2fff => self.rom_bank = (self.rom_bank & 0xff00) | u16::from(value),
-            0x3000...0x3fff => self.rom_bank = (self.rom_bank & 0xff) | (u16::from(value) << 8),
-            0x4000...0x5fff => self.ram_bank = value & 0x0f,
-            0xa000...0xbfff => {
+            0x0000..=0x1fff => self.ram_enabled = (value & 0x0f) == 0x0a,
+            0x2000..=0x2fff => self.rom_bank = (self.rom_bank & 0xff00) | u16::from(value),
+            0x3000..=0x3fff => self.rom_bank = (self.rom_bank & 0xff) | (u16::from(value) << 8),
+            0x4000..=0x5fff => self.ram_bank = value & 0x0f,
+            0xa000..=0xbfff => {
                 if self.ram_enabled {
                     let a = usize::from(self.ram_bank) * 0x2000 + usize::from(address) - 0xa000;
                     self.ram[a] = value;

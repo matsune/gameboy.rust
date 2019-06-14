@@ -313,15 +313,6 @@ impl CartridgeType {
         }
     }
 
-    fn is_mmm01(&self) -> bool {
-        match self {
-            CartridgeType::Mmm01 | CartridgeType::Mmm01Sram | CartridgeType::Mmm01SramBattery => {
-                true
-            }
-            _ => false,
-        }
-    }
-
     fn is_battery(&self) -> bool {
         match self {
             CartridgeType::Mbc1RamBattery
@@ -333,47 +324,6 @@ impl CartridgeType {
             | CartridgeType::Mbc3RamBattery
             | CartridgeType::Mbc5RamBattery
             | CartridgeType::Mbc5RumbleSramBattery => true,
-            _ => false,
-        }
-    }
-
-    fn is_ram(&self) -> bool {
-        match self {
-            CartridgeType::Mbc1Ram
-            | CartridgeType::Mbc1RamBattery
-            | CartridgeType::RomRam
-            | CartridgeType::RomRamBattery
-            | CartridgeType::Mbc3TimerRamBattery
-            | CartridgeType::Mbc3Ram
-            | CartridgeType::Mbc3RamBattery
-            | CartridgeType::Mbc5Ram
-            | CartridgeType::Mbc5RamBattery => true,
-            _ => false,
-        }
-    }
-
-    fn is_sram(&self) -> bool {
-        match self {
-            CartridgeType::Mmm01Sram
-            | CartridgeType::Mmm01SramBattery
-            | CartridgeType::Mbc5RumbleSram
-            | CartridgeType::Mbc5RumbleSramBattery => true,
-            _ => false,
-        }
-    }
-
-    fn is_rumble(&self) -> bool {
-        match self {
-            CartridgeType::Mbc5Rumble
-            | CartridgeType::Mbc5RumbleSram
-            | CartridgeType::Mbc5RumbleSramBattery => true,
-            _ => false,
-        }
-    }
-
-    fn is_timer(&self) -> bool {
-        match self {
-            CartridgeType::Mbc3TimerBattery | CartridgeType::Mbc3TimerRamBattery => true,
             _ => false,
         }
     }
@@ -410,7 +360,7 @@ trait MBC: Memory + Send {}
 
 pub struct Cartridge {
     title: String,
-    mbc: Box<MBC>,
+    mbc: Box<dyn MBC>,
     skip_boot: bool,
     pub is_gbc: bool,
 }
@@ -448,7 +398,7 @@ impl Cartridge {
         } else {
             None
         };
-        let mbc: Box<MBC> = if cart_type.is_mbc1() {
+        let mbc: Box<dyn MBC> = if cart_type.is_mbc1() {
             Box::new(Mbc1::new(data, battery))
         } else if cart_type.is_mbc2() {
             Box::new(Mbc2::new(data, battery))
@@ -478,9 +428,9 @@ impl Memory for Cartridge {
             self.mbc.read(address)
         } else {
             match address {
-                0x0000...0x00ff if !self.is_gbc => GB_BOOT_ROM[usize::from(address)],
-                0x0000...0x00ff if self.is_gbc => GBC_BOOT_ROM[usize::from(address)],
-                0x0200...0x08ff if self.is_gbc => GBC_BOOT_ROM[usize::from(address) - 0x0100],
+                0x0000..=0x00ff if !self.is_gbc => GB_BOOT_ROM[usize::from(address)],
+                0x0000..=0x00ff if self.is_gbc => GBC_BOOT_ROM[usize::from(address)],
+                0x0200..=0x08ff if self.is_gbc => GBC_BOOT_ROM[usize::from(address) - 0x0100],
                 _ => self.mbc.read(address),
             }
         }

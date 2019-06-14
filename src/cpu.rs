@@ -50,7 +50,7 @@ const CB_CYCLES: [u32; 256] = [
 ];
 
 impl CPU {
-    pub fn tick(&mut self, mem: &mut Memory) -> u32 {
+    pub fn tick(&mut self, mem: &mut dyn Memory) -> u32 {
         self.update_ime();
 
         let c = self.handle_interrupts(mem);
@@ -82,7 +82,7 @@ impl CPU {
         }
     }
 
-    fn handle_interrupts(&mut self, mem: &mut Memory) -> u32 {
+    fn handle_interrupts(&mut self, mem: &mut dyn Memory) -> u32 {
         if !self.ime && !self.halted {
             return 0;
         }
@@ -105,7 +105,7 @@ impl CPU {
         4
     }
 
-    fn command(&mut self, mem: &mut Memory) -> u32 {
+    fn command(&mut self, mem: &mut dyn Memory) -> u32 {
         let opcode = self.read_byte(mem);
         let mut cbcode: u8 = 0;
         let mut internal_delay = 0u32;
@@ -636,7 +636,7 @@ impl CPU {
         }
     }
 
-    fn ext_command(&mut self, mem: &mut Memory, opcode: u8) {
+    fn ext_command(&mut self, mem: &mut dyn Memory, opcode: u8) {
         match opcode {
             0x00 => self.reg.b = self.alu_rlc(self.reg.b),
             0x01 => self.reg.c = self.alu_rlc(self.reg.c),
@@ -1028,24 +1028,24 @@ impl CPU {
 
 // alu
 impl CPU {
-    fn read_byte(&mut self, mem: &mut Memory) -> u8 {
+    fn read_byte(&mut self, mem: &mut dyn Memory) -> u8 {
         let v = mem.read(self.reg.pc);
         self.reg.pc += 1;
         v
     }
 
-    fn read_word(&mut self, mem: &mut Memory) -> u16 {
+    fn read_word(&mut self, mem: &mut dyn Memory) -> u16 {
         let v = mem.read_word(self.reg.pc);
         self.reg.pc += 2;
         v
     }
 
-    fn push(&mut self, mem: &mut Memory, v: u16) {
+    fn push(&mut self, mem: &mut dyn Memory, v: u16) {
         self.reg.sp -= 2;
         mem.write_word(self.reg.sp, v);
     }
 
-    fn pop(&mut self, mem: &mut Memory) -> u16 {
+    fn pop(&mut self, mem: &mut dyn Memory) -> u16 {
         let r = mem.read_word(self.reg.sp);
         self.reg.sp += 2;
         r
@@ -1154,7 +1154,7 @@ impl CPU {
         self.reg.set_hl(r);
     }
 
-    fn alu_add_sp(&mut self, mem: &mut Memory) {
+    fn alu_add_sp(&mut self, mem: &mut dyn Memory) {
         let a = self.reg.sp;
         let b = i16::from(self.read_byte(mem) as i8) as u16;
         self.reg.set_flag(C, (a & 0x00ff) + (b & 0x00ff) > 0x00ff);
@@ -1303,7 +1303,7 @@ impl CPU {
         a & !(1 << b)
     }
 
-    fn alu_jr(&mut self, mem: &mut Memory) {
+    fn alu_jr(&mut self, mem: &mut dyn Memory) {
         let n = mem.read(self.reg.pc) as i8;
         self.reg.pc += 1;
         self.reg.pc = (u32::from(self.reg.pc) as i32 + i32::from(n)) as u16;

@@ -221,12 +221,12 @@ impl Mbc3 {
 impl Memory for Mbc3 {
     fn read(&self, address: u16) -> u8 {
         match address {
-            0x0000...0x3fff => *self.rom.get(usize::from(address)).unwrap_or(&0),
-            0x4000...0x7fff => {
+            0x0000..=0x3fff => *self.rom.get(usize::from(address)).unwrap_or(&0),
+            0x4000..=0x7fff => {
                 let a = usize::from(self.rom_bank) * 0x4000 + usize::from(address) - 0x4000;
                 *self.rom.get(a).unwrap_or(&0)
             }
-            0xa000...0xbfff => {
+            0xa000..=0xbfff => {
                 if self.ram_bank < 4 {
                     let a = u16::from(self.ram_bank) * 0x2000 + address - 0xa000;
                     *self.ram.get(usize::from(a)).unwrap_or(&0)
@@ -240,15 +240,15 @@ impl Memory for Mbc3 {
 
     fn write(&mut self, address: u16, value: u8) {
         match address {
-            0x0000...0x1fff => self.ram_enabled = (value & 0x0f) == 0x0a,
-            0x2000...0x3fff => {
+            0x0000..=0x1fff => self.ram_enabled = (value & 0x0f) == 0x0a,
+            0x2000..=0x3fff => {
                 self.rom_bank = match value & 0x7f {
                     0 => 1,
                     n => n,
                 }
             }
-            0x4000...0x5fff => self.ram_bank = value,
-            0x6000...0x7fff => {
+            0x4000..=0x5fff => self.ram_bank = value,
+            0x6000..=0x7fff => {
                 if value == 0x01 && self.latch_reg == 0 {
                     if self.rtc.is_latched() {
                         self.rtc.unlatch();
@@ -258,7 +258,7 @@ impl Memory for Mbc3 {
                 }
                 self.latch_reg = value;
             }
-            0xa000...0xbfff => {
+            0xa000..=0xbfff => {
                 if self.ram_enabled {
                     if self.ram_bank < 4 {
                         let idx =

@@ -15,7 +15,7 @@ impl RomOnly {
 impl Memory for RomOnly {
     fn read(&self, address: u16) -> u8 {
         match address {
-            0x0000...0x7fff => self.memory[usize::from(address)],
+            0x0000..=0x7fff => self.memory[usize::from(address)],
             _ => 0,
         }
     }

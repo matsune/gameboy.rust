@@ -246,10 +246,8 @@ impl GPU {
                     if self.stat.mode != StatMode::VRAM {
                         self.set_mode(StatMode::VRAM, int_flag);
                     }
-                } else {
-                    if self.stat.mode != StatMode::HBlank {
-                        self.set_mode(StatMode::HBlank, int_flag);
-                    }
+                } else if self.stat.mode != StatMode::HBlank {
+                    self.set_mode(StatMode::HBlank, int_flag);
                 }
             }
         }
@@ -454,8 +452,8 @@ impl GPU {
 impl Memory for GPU {
     fn read(&self, a: u16) -> u8 {
         match a {
-            0x8000...0x9fff => self.ram[self.ram_bank][usize::from(a - 0x8000)],
-            0xfe00...0xfe9f => self.oam.read(a),
+            0x8000..=0x9fff => self.ram[self.ram_bank][usize::from(a - 0x8000)],
+            0xfe00..=0xfe9f => self.oam.read(a),
             0xff40 => self.lcdc.get(),
             0xff41 => {
                 let bit6 = if self.stat.ly_interrupt_enabled {
@@ -502,8 +500,8 @@ impl Memory for GPU {
 
     fn write(&mut self, a: u16, v: u8) {
         match a {
-            0x8000...0x9fff => self.ram[self.ram_bank][usize::from(a - 0x8000)] = v,
-            0xfe00...0xfe9f => self.oam.write(a, v),
+            0x8000..=0x9fff => self.ram[self.ram_bank][usize::from(a - 0x8000)] = v,
+            0xfe00..=0xfe9f => self.oam.write(a, v),
             0xff40 => {
                 self.lcdc = v.into();
                 if !self.lcdc.lcd_enabled() {
@@ -638,7 +636,7 @@ impl Hdma {
 impl Memory for Hdma {
     fn read(&self, a: u16) -> u8 {
         match a {
-            0xff51...0xff54 => self.data[usize::from(a) - 0xff51],
+            0xff51..=0xff54 => self.data[usize::from(a) - 0xff51],
             0xff55 => self.len | (if self.is_transfer { 0 } else { 1 << 7 }),
             _ => panic!("Hdma unsupported address to read 0x{:04x}", a),
         }
@@ -646,7 +644,7 @@ impl Memory for Hdma {
 
     fn write(&mut self, a: u16, v: u8) {
         match a {
-            0xff51...0xff54 => self.data[usize::from(a) - 0xff51] = v,
+            0xff51..=0xff54 => self.data[usize::from(a) - 0xff51] = v,
             0xff55 => {
                 if self.is_transfer && self.mode == HdmaMode::Hdma {
                     if !is_bit_on(v, 7) {

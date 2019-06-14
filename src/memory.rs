@@ -108,7 +108,7 @@ impl MMU {
         }
     }
 
-    pub fn enable_sound(&mut self, player: Box<AudioPlayer>) {
+    pub fn enable_sound(&mut self, player: Box<dyn AudioPlayer>) {
         self.sound = Some(Sound::new(player));
     }
 
@@ -184,33 +184,33 @@ impl MMU {
 impl Memory for MMU {
     fn read(&self, address: u16) -> u8 {
         match address {
-            0x0000...0x7fff => self.cartridge.read(address),
-            0x8000...0x9fff => self.gpu.read(address),
-            0xa000...0xbfff => self.cartridge.read(address),
-            0xc000...0xcfff => self.wram.read(address),
-            0xd000...0xdfff => self
+            0x0000..=0x7fff => self.cartridge.read(address),
+            0x8000..=0x9fff => self.gpu.read(address),
+            0xa000..=0xbfff => self.cartridge.read(address),
+            0xc000..=0xcfff => self.wram.read(address),
+            0xd000..=0xdfff => self
                 .wram
                 .read(address - 0x1000 + u16::from(self.wram_bank) * 0x1000),
-            0xe000...0xefff => self.wram.read(address - 0x2000),
-            0xf000...0xfdff => self
+            0xe000..=0xefff => self.wram.read(address - 0x2000),
+            0xf000..=0xfdff => self
                 .wram
                 .read(address - 0x3000 + u16::from(self.wram_bank) * 0x1000),
-            0xfe00...0xfe9f => self.gpu.read(address),
+            0xfe00..=0xfe9f => self.gpu.read(address),
             0xff00 => self.joypad.read(address),
-            0xff01...0xff02 => self.serial.read(address),
-            0xff04...0xff07 => self.timer.read(address),
+            0xff01..=0xff02 => self.serial.read(address),
+            0xff04..=0xff07 => self.timer.read(address),
             0xff0f => self.interrupt_flag.get(),
-            0xff10...0xff3f => match &self.sound {
+            0xff10..=0xff3f => match &self.sound {
                 Some(sound) => sound.read(address),
                 None => 0,
             },
             0xff4d => 0, // TODO: speed
-            0xff40...0xff45 | 0xff47...0xff4b | 0xff4f => self.gpu.read(address),
+            0xff40..=0xff45 | 0xff47..=0xff4b | 0xff4f => self.gpu.read(address),
             0xff50 => self.cartridge.read(address),
-            0xff51...0xff55 => self.hdma.read(address),
-            0xff68...0xff6b => self.gpu.read(address),
+            0xff51..=0xff55 => self.hdma.read(address),
+            0xff68..=0xff6b => self.gpu.read(address),
             0xff70 => self.wram_bank,
-            0xff80...0xfffe => self.hram.read(address),
+            0xff80..=0xfffe => self.hram.read(address),
             0xffff => self.interrupt_enable,
             _ => 0,
         }
@@ -218,23 +218,23 @@ impl Memory for MMU {
 
     fn write(&mut self, address: u16, value: u8) {
         match address {
-            0x0000...0x7fff => self.cartridge.write(address, value),
-            0x8000...0x9fff => self.gpu.write(address, value),
-            0xa000...0xbfff => self.cartridge.write(address, value),
-            0xc000...0xcfff => self.wram.write(address, value),
-            0xd000...0xdfff => self
+            0x0000..=0x7fff => self.cartridge.write(address, value),
+            0x8000..=0x9fff => self.gpu.write(address, value),
+            0xa000..=0xbfff => self.cartridge.write(address, value),
+            0xc000..=0xcfff => self.wram.write(address, value),
+            0xd000..=0xdfff => self
                 .wram
                 .write(address - 0x1000 + u16::from(self.wram_bank) * 0x1000, value),
-            0xe000...0xefff => self.wram.write(address - 0x2000, value),
-            0xf000...0xfdff => self
+            0xe000..=0xefff => self.wram.write(address - 0x2000, value),
+            0xf000..=0xfdff => self
                 .wram
                 .write(address - 0x3000 + u16::from(self.wram_bank) * 0x1000, value),
-            0xfe00...0xfe9f => self.gpu.write(address, value),
+            0xfe00..=0xfe9f => self.gpu.write(address, value),
             0xff00 => self.joypad.write(address, value),
-            0xff01...0xff02 => self.serial.write(address, value),
-            0xff04...0xff07 => self.timer.write(address, value),
+            0xff01..=0xff02 => self.serial.write(address, value),
+            0xff04..=0xff07 => self.timer.write(address, value),
             0xff0f => self.interrupt_flag = InterruptFlag::from(value),
-            0xff10...0xff3f => match &mut self.sound {
+            0xff10..=0xff3f => match &mut self.sound {
                 Some(sound) => sound.write(address, value),
                 None => {}
             },
@@ -246,17 +246,17 @@ impl Memory for MMU {
                     self.write(0xfe00 + i, b);
                 }
             }
-            0xff40...0xff45 | 0xff47...0xff4b | 0xff4f => self.gpu.write(address, value),
+            0xff40..=0xff45 | 0xff47..=0xff4b | 0xff4f => self.gpu.write(address, value),
             0xff50 => self.cartridge.write(address, value),
-            0xff51...0xff55 => self.hdma.write(address, value),
-            0xff68...0xff6b => self.gpu.write(address, value),
+            0xff51..=0xff55 => self.hdma.write(address, value),
+            0xff68..=0xff6b => self.gpu.write(address, value),
             0xff70 => {
                 self.wram_bank = match value & 0x07 {
                     0 => 1,
                     n => n,
                 };
             }
-            0xff80...0xfffe => self.hram.write(address, value),
+            0xff80..=0xfffe => self.hram.write(address, value),
             0xffff => self.interrupt_enable = value,
             _ => {}
         };

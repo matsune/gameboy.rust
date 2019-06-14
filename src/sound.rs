@@ -31,7 +31,7 @@ pub struct Sound {
     next_time: u32,
     need_sync: bool,
     time_divider: u8,
-    player: Box<AudioPlayer>,
+    player: Box<dyn AudioPlayer>,
     nr51: u8,
 }
 
@@ -42,7 +42,7 @@ fn create_blipbuf(samples_rate: u32) -> BlipBuf {
 }
 
 impl Sound {
-    pub fn new(player: Box<AudioPlayer>) -> Self {
+    pub fn new(player: Box<dyn AudioPlayer>) -> Self {
         let blipbuf1 = create_blipbuf(player.samples_rate());
         let blipbuf2 = create_blipbuf(player.samples_rate());
         let blipbuf3 = create_blipbuf(player.samples_rate());
@@ -213,10 +213,10 @@ impl Sound {
 impl Memory for Sound {
     fn read(&self, a: u16) -> u8 {
         match a {
-            0xff10...0xff14 => self.channel1.read(a),
-            0xff16...0xff19 => self.channel2.read(a),
-            0xff1a...0xff1e | 0xff30...0xff3f => self.channel3.read(a),
-            0xff20...0xff23 => self.channel4.read(a),
+            0xff10..=0xff14 => self.channel1.read(a),
+            0xff16..=0xff19 => self.channel2.read(a),
+            0xff1a..=0xff1e | 0xff30..=0xff3f => self.channel3.read(a),
+            0xff20..=0xff23 => self.channel4.read(a),
             0xff24 => self.volume_right << 4 | self.volume_left,
             0xff25 => self.nr51,
             0xff26 => {
@@ -236,10 +236,10 @@ impl Memory for Sound {
         }
         self.run();
         match a {
-            0xff10...0xff14 => self.channel1.write(a, v),
-            0xff16...0xff19 => self.channel2.write(a, v),
-            0xff1a...0xff1e | 0xff30...0xff3f => self.channel3.write(a, v),
-            0xff20...0xff23 => self.channel4.write(a, v),
+            0xff10..=0xff14 => self.channel1.write(a, v),
+            0xff16..=0xff19 => self.channel2.write(a, v),
+            0xff1a..=0xff1e | 0xff30..=0xff3f => self.channel3.write(a, v),
+            0xff20..=0xff23 => self.channel4.write(a, v),
             0xff24 => {
                 self.volume_left = v & 0b0111;
                 self.volume_right = (v & 0b0111_0000) >> 4;
@@ -277,7 +277,7 @@ impl VolumeEnvelope {
 }
 
 impl Memory for VolumeEnvelope {
-    fn read(&self, a: u16) -> u8 {
+    fn read(&self, _a: u16) -> u8 {
         0
     }
 
@@ -602,7 +602,7 @@ impl Memory for WaveSound {
             0xff1c => self.nr2,
             0xff1d => self.nr3,
             0xff1e => self.nr4,
-            0xff30...0xff3f => {
+            0xff30..=0xff3f => {
                 (self.waveram[usize::from(a - 0xff30) / 2] << 4)
                     | self.waveram[usize::from(a - 0xff30) / 2 + 1]
             }
@@ -643,7 +643,7 @@ impl Memory for WaveSound {
                     self.delay = 0;
                 }
             }
-            0xff30...0xff3f => {
+            0xff30..=0xff3f => {
                 self.waveram[usize::from(a - 0xff30) / 2] = v >> 4;
                 self.waveram[usize::from(a - 0xff30) / 2 + 1] = v & 0x0f;
             }
@@ -757,7 +757,7 @@ impl Memory for NoiseSound {
             }
             0xff20 => {
                 self.nr1 = v;
-                self.new_length = 64 - v & 0b0011_1111;
+                self.new_length = 64 - (v & 0b0011_1111);
             }
             0xff21 => {
                 self.nr2 = v;
